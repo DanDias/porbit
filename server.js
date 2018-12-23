@@ -1,5 +1,6 @@
 var express = require('express');
 var app = express();
+var port = 80;
 var server = require('http').Server(app);
 
 app.use('/css',express.static(__dirname + '/css'));
@@ -10,6 +11,6 @@ app.get('/',function(req,res){
     res.sendFile(__dirname+'/index.html');
 });
 
-server.listen(8081,function(){ // Listens to port 8081
+server.listen(port,function(){ // Listens
     console.log('Listening on '+server.address().port);
 });
