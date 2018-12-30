@@ -105,7 +105,7 @@ function create ()
             y: (pointer.y-pointer.downY)*flickScale
         };
 
-        var center = new Phaser.Geom.Point(9.8+estimatedVelocity.x,pointer.y);
+        var center = new Phaser.Geom.Point(pointer.x-(9.8+estimatedVelocity.x),pointer.y);
 
         flickEstimate.x = center.x;
         flickEstimate.y = center.y;
