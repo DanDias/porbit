@@ -27,27 +27,33 @@ var flickScale = 1;
 var inaccuracy = 1;
 
 var flickEstimate = null;
+var graphics;
+var destruction = true;
 
 var game = new Phaser.Game(config);
 
 function preload ()
 {
     this.load.spritesheet('point', 'assets/point.png', { frameWidth: 32, frameHeight: 32 });
+    this.load.spritesheet('ui-button', 'assets/ui/button.png', { frameWidth: 80, frameHeight: 40});
     this.load.spritesheet('planet', 'assets/planet.png', { frameWidth: 128, frameHeight: 128});
     this.load.spritesheet('boom', 'assets/explosion.png', { frameWidth: 64, frameHeight: 64, endFrame: 23 });
 }
 
 function create ()
 {
-    var graphics = this.add.graphics();
+    graphics = this.add.graphics();
 
-    var color = 0xffff00;
-    var thickness = 2;
-    var alpha = 0.5;
-
-    graphics.lineStyle(thickness,color,alpha);
+    var button = new UIButton(this, config.width-85, config.height-25, 160, 50, "Destruction\nis "+destruction, { fill: '#000' });
+    button.on("pointerdown", function(pointer) {
+        pointer.event.cancelBubble = true;
+        destruction = !destruction;
+        this.setText("Destruction\nis "+destruction);
+        pointer.consume
+    });
 
     planet = this.physics.add.sprite(config.width/2,config.height/2,'planet');
+    planet.alpha = 0.25;
     planet.body.mass = planetMass;
     planet.radius = 55;
 
@@ -63,22 +69,19 @@ function create ()
     //  Events
 
     this.input.on('pointerdown', function (pointer) {
-        var center = {
-            x: planet.x+(pointer.x-planet.x)*0.5,
-            y: planet.y+(pointer.y-planet.y)*0.5
-        }
-        flickEstimate = new Phaser.Geom.Ellipse(center.x,center.y,50,50);
+        if (pointer.event.cancelBubble == true) {return;}
+        flickEstimate = new Phaser.Geom.Ellipse(pointer.x,pointer.y,1,1);
     });
 
     this.input.on('pointerup', function (pointer) {
-
-        var point = this.physics.add.sprite(pointer.x,pointer.y,'point');
+        if (!flickEstimate) {return;}
+        var point = this.physics.add.sprite(pointer.downX,pointer.downY,'point');
         point.body.mass = pointMass;
         point.body.radius = 16;
         // TODO: Be a little less precise to account for not as precise human movement, maybe use a very small grid snapping
         
         // Pull to fling
-        //point.acceleration = {x:(pointer.downX-pointer.upX)*flickScale,y:(pointer.downY-pointer.upY)*flickScale};
+        //point.body.velocity.setTo((pointer.downX-pointer.upX)*flickScale,(pointer.downY-pointer.upY)*flickScale);
         
         // Flick to fling
         point.body.velocity.setTo((pointer.upX-pointer.downX)*flickScale,(pointer.upY-pointer.downY)*flickScale);
@@ -92,19 +95,25 @@ function create ()
     },this);
 
     this.input.on('pointermove', function (pointer) {
+        if (!flickEstimate) {return;}
+        graphics.clear();
 
-        if (flickEstimate !== null)
-        {
-            graphics.clear();
+        drawArrow(pointer.downX,pointer.downY,pointer.x,pointer.y);
+        var dist = Math.sqrt(Math.pow(planet.x-pointer.x,2)+Math.pow(planet.y-planet.y,2));
+        var estimatedVelocity = {
+            x: (pointer.x-pointer.downX)*flickScale,
+            y: (pointer.y-pointer.downY)*flickScale
+        };
 
-            var dist = Math.sqrt(Math.pow(planet.x-pointer.x,2)+Math.pow(planet.y-planet.y,2));
+        var center = new Phaser.Geom.Point(9.8+estimatedVelocity.x,pointer.y);
 
+        flickEstimate.x = center.x;
+        flickEstimate.y = center.y;
+        flickEstimate.width = estimatedVelocity.x*2;
+        flickEstimate.height = estimatedVelocity.y*2;
 
-
-
-            graphics.strokeEllipseShape(flickEstimate);
-        }
-        
+        drawCircle(new Phaser.Geom.Circle(center.x,center.y,3));
+        drawEllipse(flickEstimate);
     });
 }
 
@@ -142,7 +151,7 @@ function updateBody(ast_,idx) {
     var dx = ast_.x - planet.x;     
     var dy = ast_.y - planet.y;     
     var r = dx * dx + dy * dy;
-    if (r < planet.radius * planet.radius) { //|| (r > killRadius * killRadius)) {       
+    if (r < planet.radius * planet.radius && destruction) { //|| (r > killRadius * killRadius)) {       
         explosion(ast_.body.x, ast_.body.y,
                      ast_.body.velocity.x - inaccuracy, 
                      ast_.body.velocity.x + inaccuracy,         
@@ -173,4 +182,47 @@ function explosion(x,y,negx,posx,negy,posy)
 function DEG2RAD(deg)
 {
     return deg*(Math.PI/180);
+}
+
+
+function drawLine(x1,y1,x2,y2,width,color,trans)
+{
+    width = !width ? 1 : width;
+    color = !color ? 0xff00ff : color;
+    trans = !trans ? 0.5 : trans;
+    graphics.lineStyle(width,color,trans);
+    graphics.strokeLineShape(new Phaser.Geom.Line(x1,y1,x2,y2));
+}
+
+function drawArrow(x1,y1,x2,y2,width,color,trans)
+{
+    width = !width ? 1 : width;
+    color = !color ? 0xff00ff : color;
+    trans = !trans ? 0.5 : trans;
+    graphics.lineStyle(width,color,trans);
+    var line = new Phaser.Geom.Line(x1,y1,x2,y2);
+    graphics.strokeLineShape(line);
+    var midPoint;
+    midPoint = Phaser.Geom.Line.GetMidPoint(line);
+    var arrowLine = new Phaser.Geom.Line(x2,y2,midPoint.x,midPoint.y);
+    graphics.strokeLineShape(Phaser.Geom.Line.RotateAroundXY(arrowLine,x2,y2,DEG2RAD(20)));
+    graphics.strokeLineShape(Phaser.Geom.Line.RotateAroundXY(arrowLine,x2,y2,DEG2RAD(-40)));
+}
+
+function drawEllipse(ellipse,width,color,trans)
+{
+    width = !width ? 2 : width;
+    color = !color ? 0xffff00 : color;
+    trans = !trans ? 0.5 : trans;
+    graphics.lineStyle(width,color,trans);
+    graphics.strokeEllipseShape(ellipse);
+}
+
+function drawCircle(circle,width,color,trans)
+{
+    width = !width ? 2 : width;
+    color = !color ? 0xff0000 : color;
+    trans = !trans ? 0.5 : trans;
+    graphics.lineStyle(width,color,trans);
+    graphics.strokeCircleShape(circle);
 }
