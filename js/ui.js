@@ -1,4 +1,5 @@
-class UIButton extends Phaser.GameObjects.Sprite {
+class UIButton extends Phaser.GameObjects.Sprite 
+{
     setText(text)
     {
         this.label.text = text;

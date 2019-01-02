@@ -17,7 +17,7 @@ var config = {
         }
     }
 };
-var points = [];
+var spaceObjects = [];
 var pointMass = 1;
 var pointScale = 0.25;
 var planet;
@@ -29,7 +29,9 @@ var inaccuracy = 1;
 var flickEstimate = {};
 var simulationSteps = 100;
 var graphics;
+
 var destruction = true;
+var spawnMode = 'points';
 
 var game = new Phaser.Game(config);
 
@@ -39,24 +41,29 @@ function preload ()
     this.load.spritesheet('ui-button', 'assets/ui/button.png', { frameWidth: 80, frameHeight: 40});
     this.load.spritesheet('planet', 'assets/planet.png', { frameWidth: 128, frameHeight: 128});
     this.load.spritesheet('boom', 'assets/explosion.png', { frameWidth: 64, frameHeight: 64, endFrame: 23 });
+    this.load.spritesheet('rocket', 'assets/rocket.png', { frameWidth: 40, frameHeight: 40});
 }
 
 function create ()
 {
     graphics = this.add.graphics();
 
-    var button = new UIButton(this, config.width-85, config.height-25, 160, 50, "Destruction\nis "+destruction, { fill: '#000' });
-    button.on("pointerdown", function(pointer) {
+    var destroyBtn = new UIButton(this, config.width-85, config.height-25, 160, 50, "Destruction\nis "+destruction, { fill: '#000' });
+    destroyBtn.on("pointerdown", function(pointer) {
         pointer.event.cancelBubble = true;
         destruction = !destruction;
         this.setText("Destruction\nis "+destruction);
-        pointer.consume
     });
 
-    planet = this.physics.add.sprite(config.width/2,config.height/2,'planet');
+    var spawnBtn = new UIButton(this, config.width-85, config.height-100, 160, 50, "Spawn Mode:\n"+spawnMode, { fill: '#000'});
+    spawnBtn.on("pointerdown", function(pointer) {
+        pointer.event.cancelBubble = true;
+        spawnMode = spawnMode == 'points' ? 'enemies' : 'points';
+        this.setText("Spawn Mode:\n"+spawnMode);
+    })
+
+    planet = new Planet(this,config.width/2,config.height/2,planetMass,'planet');
     planet.alpha = 0.25;
-    planet.body.mass = planetMass;
-    planet.radius = 55;
 
     var animConfig = {
         key: 'explode',
@@ -67,7 +74,7 @@ function create ()
 
     flickEstimate = this.physics.add.sprite(0,0,'');
     flickEstimate.body.mass = pointMass;
-    flickEstimate.body.radius = 16;
+    flickEstimate.body.radius = 32*pointScale;
     flickEstimate.body.enable = false;
     flickEstimate.visible = false;
 
@@ -77,36 +84,48 @@ function create ()
 
     this.input.on('pointerdown', function (pointer) {
         if (pointer.event.cancelBubble == true) {return;}
-        
-        flickEstimate.body.velocity = Phaser.Math.Vector2.ZERO;
 
-        var points = simulateFrom(flickEstimate,pointer.x,pointer.y,simulationSteps);
-        for(var i=0;i<points.length-1;i++)
+        if (spawnMode == 'points')
         {
-            drawLine(points[i].x,points[i].y,points[i+1].x,points[i+1].y,2,0xff0ff);
+            flickEstimate.body.velocity = Phaser.Math.Vector2.ZERO;
+
+            var points = simulateFrom(flickEstimate,pointer.x,pointer.y,simulationSteps);
+            for(var i=0;i<points.length-1;i++)
+            {
+                drawLine(points[i].x,points[i].y,points[i+1].x,points[i+1].y,2,0xff0ff);
+            }
         }
-    });
+        else if (spawnMode == 'enemies')
+        {
+            // Spawn Rocket
+            var enemy = new EnemyRocket(this,pointer.x,pointer.y,pointMass,'rocket');
+            this.physics.accelerateToObject(enemy, planet, 5);
+            enemy.rotation = Phaser.Math.Angle.BetweenPoints(enemy,planet)+Math.PI/2;
+            enemy.setScale(pointScale);
+            enemy.body.mass = pointMass;
+            enemy.onDestroyed(destroyObject);
+            spaceObjects.push(enemy);
+        }
+    }, this);
 
     this.input.on('pointerup', function (pointer) {
-        if (!flickEstimate) {return;}
+        if (!flickEstimate || spawnMode == 'enemies') {return;}
         graphics.clear();
-        var point = this.physics.add.sprite(pointer.downX,pointer.downY,'point');
-        point.body.mass = pointMass;
-        point.body.radius = 16;
-        // TODO: Be a little less precise to account for not as precise human movement, maybe use a very small grid snapping
-        
+        var point = new Satellite(this,pointer.downX,pointer.downY,pointMass,'point');
+        point.setScale(pointScale);
+        point.onDestroyed(destroyObject);
+
         // Pull to fling
         //point.body.velocity.setTo((pointer.downX-pointer.upX)*flickScale,(pointer.downY-pointer.upY)*flickScale);
         
         // Flick to fling
         point.body.velocity.setTo((pointer.upX-pointer.downX)*flickScale,(pointer.upY-pointer.downY)*flickScale);
 
-        point.setScale(pointScale);
-        points.push(point);
+        spaceObjects.push(point);
     },this);
 
     this.input.on('pointermove', function (pointer) {
-        if(!pointer.isDown) { return; }
+        if(!pointer.isDown || spawnMode == 'enemies') { return; }
         // Only do stuff if the pointer is down
         graphics.clear();
 
@@ -120,9 +139,24 @@ function create ()
 }
 
 function update(elapsedTime, delta)
-{ 
-    points.forEach((p,idx) => {
+{
+    spaceObjects.forEach((p,idx) => {
         updateBody(p,idx);
+    });
+}
+
+function destroyObject(obj) 
+{
+    explosion(
+        obj.body.x,
+        obj.body.y,
+        obj.body.velocity.x - inaccuracy,
+        obj.body.velocity.x + inaccuracy,
+        obj.body.velocity.y - inaccuracy,
+        obj.body.velocity.y + inaccuracy);
+    obj.destroy();
+    spaceObjects = spaceObjects.filter((val, idx) => {
+        return obj != val;
     });
 }
 
@@ -164,32 +198,34 @@ function accelerateToObject(gameObject,to,speed)
 function simulateUpdate(obj, delta) {
     if (delta===undefined) { delta = 0.1; }
     obj.body.acceleration.setTo(0, 0);
-    //var scene = ast_.scene;
     //Loop around all points
-    points.forEach(function(item, ast) {
-        var ax = points[ast].body.acceleration.x;
-        var ay = points[ast].body.acceleration.y;
-        var dx = points[ast].x - item.x;
-        var dy = points[ast].y - item.y;
+    spaceObjects.forEach(function(item) {
+        var ax = item.body.acceleration.x;
+        var ay = item.body.acceleration.y;
+        var dx = item.x - item.x;
+        var dy = item.y - item.y;
         var r = dx * dx + dy * dy;
-        if (r > item.radius * item.radius) {       
-            //The force on a body is (body.mass)/r^2 so taking every non planet body with       
-            // mass=1 the acceleration = force,  (r is already squared save us a sqrt)         
- 
-            accelerateToObject(points[ast], item, (((item.body.mass) / r)));
+        if (r > obj.body.radius * obj.body.radius) {       
+            //The force on a body is (body.mass)/r^2 so taking every non planet body with
+            // mass=1 the acceleration = force,  (r is already squared save us a sqrt)
+            accelerateToObject(item, obj, (((obj.body.mass) / r)));
                     
-            ax = ax + points[ast].body.acceleration.x;         
-            ay = ay + points[ast].body.acceleration.y;         
-            ast.body.acceleration.setTo(ax, ay);       
-        }     
-    }, this, false, obj);
+            ax = ax + item.body.acceleration.x;
+            ay = ay + item.body.acceleration.y;
+            item.body.acceleration.setTo(ax, ay);
+        }
+        else
+        {
+            return false;
+        }
+    });
     //Accelerate to planet
     var ax = obj.body.acceleration.x;
     var ay = obj.body.acceleration.y;
     var dx = obj.x - planet.x;
     var dy = obj.y - planet.y;     
     var r = dx * dx + dy * dy;
-    if (r < planet.radius * planet.radius) { //|| (r > killRadius * killRadius)) {       
+    if (r < planet.body.radius * planet.body.radius) { //|| (r > killRadius * killRadius)) {       
         return false;
     } else {
         accelerateToObject(obj, planet, (planet.body.mass / r));
@@ -303,50 +339,68 @@ function computeVelocity(body, delta)
     body.velocity.set(velocityX, velocityY);
 }
 
-function updateBody(ast_,idx) {
+function updateBody(ast_) {
+    if (ast_.body === undefined) { 
+        // No body? Go away!
+        return;
+    }
     ast_.body.acceleration.setTo(0, 0);
+
     var scene = ast_.scene;
     //Loop around all points
-    points.forEach(function(item, ast) {
-        var ax = points[ast].body.acceleration.x;
-        var ay = points[ast].body.acceleration.y;
-        var dx = points[ast].x - item.x;
-        var dy = points[ast].y - item.y;
+    var destroyed = [];
+    spaceObjects.forEach(function(item) {
+        if (item !== ast_)
+        {
+            var ax = item.body.acceleration.x;
+            var ay = item.body.acceleration.y;
+            var dx = item.x - ast_.x;
+            var dy = item.y - ast_.y;
+            var r = dx * dx + dy * dy;
+            if (r > ast_.body.radius * ast_.body.radius) {       
+                //The force on a body is (body.mass)/r^2 so taking every non planet body with       
+                // mass=1 the acceleration = force,  (r is already squared save us a sqrt)         
+                scene.physics.accelerateToObject(item, ast_, (((item.body.mass) / r)));        
+                ax = ax + item.body.acceleration.x;         
+                ay = ay + item.body.acceleration.y;         
+                item.body.acceleration.setTo(ax, ay);       
+            }
+            else
+            {
+                destroyed.push(item);
+            }
+        }
+    });
+    if (destroyed.length > 0)
+    {
+        for(var i=0;i<destroyed.length;i++)
+        {
+            destroyed[i].takeDamage(1);
+        }
+        ast_.takeDamage(1);        
+    }
+    else
+    {
+        //Accelerate to planet
+        var ax = ast_.body.acceleration.x;     
+        var ay = ast_.body.acceleration.y;     
+        var dx = ast_.x - planet.x;     
+        var dy = ast_.y - planet.y;     
         var r = dx * dx + dy * dy;
-        if (r > item.radius * item.radius) {       
-            //The force on a body is (body.mass)/r^2 so taking every non planet body with       
-            // mass=1 the acceleration = force,  (r is already squared save us a sqrt)         
-            scene.physics.accelerateToObject(points[ast], item, (((item.body.mass) / r)));        
-            ax = ax + points[ast].body.acceleration.x;         
-            ay = ay + points[ast].body.acceleration.y;         
-            ast.body.acceleration.setTo(ax, ay);       
-        }     
-    }, this, false, ast_);
-    //Accelerate to planet
-    var ax = ast_.body.acceleration.x;     
-    var ay = ast_.body.acceleration.y;     
-    var dx = ast_.x - planet.x;     
-    var dy = ast_.y - planet.y;     
-    var r = dx * dx + dy * dy;
-    if (r < planet.radius * planet.radius && destruction) { //|| (r > killRadius * killRadius)) {       
-        explosion(ast_.body.x, ast_.body.y,
-                     ast_.body.velocity.x - inaccuracy, 
-                     ast_.body.velocity.x + inaccuracy,         
-                     ast_.body.velocity.y - inaccuracy, 
-                     ast_.body.velocity.y + inaccuracy);
-        ast_.destroy();
-        points.splice(idx,1);
-    } else {
-        scene.physics.accelerateToObject(ast_, planet, (planet.body.mass / r));
-        ax = ax + ast_.body.acceleration.x;       
-        ay = ay + ast_.body.acceleration.y;       
-        ast_.body.acceleration.setTo(ax, ay);
+        if (r < planet.body.radius * planet.body.radius && destruction) { //|| (r > killRadius * killRadius)) {       
+            ast_.takeDamage(1);
+        } else {
+            scene.physics.accelerateToObject(ast_, planet, (planet.body.mass / r));
+            ax = ax + ast_.body.acceleration.x;       
+            ay = ay + ast_.body.acceleration.y;       
+            ast_.body.acceleration.setTo(ax, ay);
+        }
     }   
 }
 
 function explosion(x,y,negx,posx,negy,posy)
 {
-    // TODO: Object pooling... and a better way to get to add
+    // TODO: Object pooling... and a better way to get to add. Is there internal pooling?
     var boom = game.scene.scenes[0].add.sprite(x, y, 'boom', 23);
     boom.setScale(pointScale);
 
