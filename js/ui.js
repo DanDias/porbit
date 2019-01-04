@@ -16,10 +16,12 @@ class UIButton extends Phaser.GameObjects.Sprite
         scene.add.existing(this.label);
     }
 
-    setSelected(selected) 
+    setSelected(selected, tintColor)
     {
+        if (tintColor === undefined) 
+            tintColor = 0x00AA00;
         if (selected)
-            this.setTint(0x990000);
+            this.setTint(tintColor);
         else
             this.clearTint();
     }
