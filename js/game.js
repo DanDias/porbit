@@ -30,40 +30,88 @@ var flickEstimate = {};
 var simulationSteps = 100;
 var graphics;
 
-var destruction = true;
-var spawnMode = 'points';
+var cost = true;
+
+var spawning = false;
+var spawnMode = null;
+
+var money = 0;
+var timer = 0;
+
+var moneyText;
 
 var game = new Phaser.Game(config);
 
+var spawnButtons = [];
+
+var spawner =
+{
+    Collector: {
+        class: Collector,
+        cost: 10
+    },
+    Shielder: {
+        class: Shielder,
+        cost: 50
+    },
+    WeaponPlatform: {
+        class: WeaponPlatform,
+        cost: 100
+    },
+    Interceptor: {
+        class: Interceptor,
+        cost: 500
+    }
+}
+
 function preload ()
 {
-    this.load.spritesheet('point', 'assets/point.png', { frameWidth: 32, frameHeight: 32 });
+    this.load.spritesheet('Collector', 'assets/point.png', { frameWidth: 29, frameHeight: 29 });
+    this.load.spritesheet('Shielder', 'assets/point.png', { frameWidth: 29, frameHeight: 29 });
+    this.load.spritesheet('WeaponPlatform', 'assets/point.png', { frameWidth: 29, frameHeight: 29 });
+    this.load.spritesheet('Interceptor', 'assets/point.png', { frameWidth: 29, frameHeight: 29 });
     this.load.spritesheet('ui-button', 'assets/ui/button.png', { frameWidth: 80, frameHeight: 40});
-    this.load.spritesheet('planet', 'assets/planet.png', { frameWidth: 128, frameHeight: 128});
+    this.load.spritesheet('planet', 'assets/planet.png', { frameWidth: 107, frameHeight: 109});
     this.load.spritesheet('boom', 'assets/explosion.png', { frameWidth: 64, frameHeight: 64, endFrame: 23 });
-    this.load.spritesheet('rocket', 'assets/rocket.png', { frameWidth: 40, frameHeight: 40});
+    this.load.spritesheet('rocket', 'assets/rocket.png', { frameWidth: 23, frameHeight: 38});
 }
 
 function create ()
 {
     graphics = this.add.graphics();
 
-    var destroyBtn = new UIButton(this, config.width-85, config.height-25, 160, 50, "Destruction\nis "+destruction, { fill: '#000' });
-    destroyBtn.on("pointerdown", function(pointer) {
+    moneyText = new Phaser.GameObjects.Text(this, 10, 10, "Money: "+money, { fill: '#FFF' });
+    this.add.existing(moneyText);
+
+    var debugBtn = new UIButton(this, config.width-85, config.height-25, 160, 50, (cost ? '' : 'Don\'t\n')+" Enforce Cost", { fill: '#000' });
+    debugBtn.on("pointerdown", function(pointer) {
         pointer.event.cancelBubble = true;
-        destruction = !destruction;
-        this.setText("Destruction\nis "+destruction);
+        cost = !cost;
+        this.setText((cost ? '' : 'Don\'t\n')+" Enforce Cost");
     });
 
-    var spawnBtn = new UIButton(this, config.width-85, config.height-100, 160, 50, "Spawn Mode:\n"+spawnMode, { fill: '#000'});
-    spawnBtn.on("pointerdown", function(pointer) {
-        pointer.event.cancelBubble = true;
-        spawnMode = spawnMode == 'points' ? 'enemies' : 'points';
-        this.setText("Spawn Mode:\n"+spawnMode);
-    })
+    var xLoc = 75;
+    Object.keys(spawner).forEach(function(key) {
+        var item = spawner[key];
+        var btn = new UIButton(this, xLoc, config.height-40, 150, 50, key+"\n$"+item.cost, { fill: '#000' });
+        btn.on("pointerdown", function(pointer) {
+            spawnButtons.forEach((b) => {
+                b.setSelected(false);
+            });
+            pointer.event.cancelBubble = true;
+            spawnMode = item;
+            this.setSelected(true);
+        });
+        if (spawnMode === null)
+        {
+            spawnMode = item;
+            btn.setSelected(true);
+        }
+        xLoc += 150
+        spawnButtons.push(btn);
+    },this);
 
     planet = new Planet(this,config.width/2,config.height/2,planetMass,'planet');
-    planet.alpha = 0.25;
 
     var animConfig = {
         key: 'explode',
@@ -85,17 +133,15 @@ function create ()
     this.input.on('pointerdown', function (pointer) {
         if (pointer.event.cancelBubble == true) {return;}
 
-        if (spawnMode == 'points')
+        if (money < spawnMode.cost && cost) 
         {
-            flickEstimate.body.velocity = Phaser.Math.Vector2.ZERO;
-
-            var points = simulateFrom(flickEstimate,pointer.x,pointer.y,simulationSteps);
-            for(var i=0;i<points.length-1;i++)
-            {
-                drawLine(points[i].x,points[i].y,points[i+1].x,points[i+1].y,2,0xff0ff);
-            }
+            var error = new FloatingText(this,pointer.x,pointer.y+30,"Need at least "+spawnMode.cost+" money", {fill:'#FFF'});
+            this.add.existing(error);
+            pointer.event.cancelBubble = true;
+            return;
         }
-        else if (spawnMode == 'enemies')
+        spawning = true;
+        if (spawnMode == 'enemies')
         {
             // Spawn Rocket
             var enemy = new EnemyRocket(this,pointer.x,pointer.y,pointMass,'rocket');
@@ -106,12 +152,23 @@ function create ()
             enemy.onDestroyed(destroyObject);
             spaceObjects.push(enemy);
         }
+        else
+        {
+            flickEstimate.body.velocity = Phaser.Math.Vector2.ZERO;
+
+            var points = simulateFrom(flickEstimate,pointer.x,pointer.y,simulationSteps);
+            for(var i=0;i<points.length-1;i++)
+            {
+                drawLine(points[i].x,points[i].y,points[i+1].x,points[i+1].y,2,0xff0ff);
+            }
+
+        }
     }, this);
 
     this.input.on('pointerup', function (pointer) {
-        if (!flickEstimate || spawnMode == 'enemies') {return;}
+        if (!spawning || spawnMode == 'enemies') {return;}
         graphics.clear();
-        var point = new Satellite(this,pointer.downX,pointer.downY,pointMass,'point');
+        var point = new spawnMode.class(this,pointer.downX,pointer.downY,pointMass,spawnMode.class.name);
         point.setScale(pointScale);
         point.onDestroyed(destroyObject);
 
@@ -122,10 +179,12 @@ function create ()
         point.body.velocity.setTo((pointer.upX-pointer.downX)*flickScale,(pointer.upY-pointer.downY)*flickScale);
 
         spaceObjects.push(point);
+        money -= spawnMode.cost;
+        spawning = false;
     },this);
 
     this.input.on('pointermove', function (pointer) {
-        if(!pointer.isDown || spawnMode == 'enemies') { return; }
+        if(!pointer.isDown || !spawning || spawnMode == 'enemies') { return; }
         // Only do stuff if the pointer is down
         graphics.clear();
 
@@ -143,6 +202,19 @@ function update(elapsedTime, delta)
     spaceObjects.forEach((p,idx) => {
         updateBody(p,idx);
     });
+
+    updateMoney(delta);
+}
+
+function updateMoney(delta)
+{
+    timer += delta;
+    if (timer > 500)
+    {
+        money += 1;
+        timer = 0;
+    }
+    moneyText.text = "Money: "+money;
 }
 
 function destroyObject(obj) 
@@ -387,7 +459,7 @@ function updateBody(ast_) {
         var dx = ast_.x - planet.x;     
         var dy = ast_.y - planet.y;     
         var r = dx * dx + dy * dy;
-        if (r < planet.body.radius * planet.body.radius && destruction) { //|| (r > killRadius * killRadius)) {       
+        if (r < planet.body.radius * planet.body.radius) { //|| (r > killRadius * killRadius)) {       
             ast_.takeDamage(1);
         } else {
             scene.physics.accelerateToObject(ast_, planet, (planet.body.mass / r));
