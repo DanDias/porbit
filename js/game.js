@@ -1,13 +1,14 @@
 var config = {
     type: Phaser.AUTO,
     parent: 'game',
-    width: 800,
-    height: 600,
+    width: window.innerWidth,
+    height: window.innerHeight,
     pixelArt: true,
     scene: {
         create: create,
         preload: preload,
-        update: update
+        update: update,
+        resize: resize
     },
     physics: {
         default: 'arcade',
@@ -17,6 +18,12 @@ var config = {
         }
     }
 };
+
+window.addEventListener('resize', function (event) {
+
+    game.resize(window.innerWidth, window.innerHeight);
+
+}, false);
 var spaceObjects = [];
 var pointMass = 1;
 var pointScale = 0.25;
@@ -204,6 +211,14 @@ function update(elapsedTime, delta)
     });
 
     updateMoney(delta);
+}
+
+function resize (width, height)
+{
+    if (width === undefined) { width = this.sys.game.config.width; }
+    if (height === undefined) { height = this.sys.game.config.height; }
+
+    // TODO: Resize all game elements
 }
 
 function updateMoney(delta)
