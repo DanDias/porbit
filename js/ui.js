@@ -13,6 +13,8 @@ class UIButton extends Phaser.GameObjects.Sprite
         this.displayHeight = height;
         this.label = new Phaser.GameObjects.Text(scene, x, y, text, style);
         this.label.setOrigin(0.5);
+        this.label.setDepth(10);
+        this.setDepth(10);
         scene.add.existing(this.label);
     }
 

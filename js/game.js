@@ -77,6 +77,8 @@ function preload ()
     this.load.spritesheet('Shielder', 'assets/point.png', { frameWidth: 29, frameHeight: 29 });
     this.load.spritesheet('WeaponPlatform', 'assets/point.png', { frameWidth: 29, frameHeight: 29 });
     this.load.spritesheet('Interceptor', 'assets/point.png', { frameWidth: 29, frameHeight: 29 });
+    this.load.spritesheet('asteroid', 'assets/point.png', { frameWidth: 29, frameHeight: 29 });
+    this.load.spritesheet('bullet', 'assets/point.png', { frameWidth: 29, frameHeight: 29 });
     this.load.spritesheet('ui-button', 'assets/ui/button.png', { frameWidth: 80, frameHeight: 40});
     this.load.spritesheet('planet', 'assets/planet.png', { frameWidth: 107, frameHeight: 109});
     this.load.spritesheet('boom', 'assets/explosion.png', { frameWidth: 64, frameHeight: 64, endFrame: 23 });
@@ -202,12 +204,19 @@ function create ()
             drawLine(points[i].x,points[i].y,points[i+1].x,points[i+1].y,2,0xff0ff);
         }
     });
+
+    //spawnAsteroid(this);
+    this.time.delayedCall(Phaser.Math.RND.integerInRange(3,8)*1000, spawnEnemy,[this]);
 }
 
 function update(elapsedTime, delta)
 {
     spaceObjects.forEach((p,idx) => {
         updateBody(p,idx);
+        if (p.scanForTarget !== undefined)
+        {
+            p.scanForTarget(spaceObjects);
+        }
     });
 
     updateMoney(delta);
@@ -220,6 +229,83 @@ function resize (width, height)
 
     // TODO: Resize all game elements
 }
+
+function spawnAsteroid(scene)
+{
+    // Points to use
+    var spawnPoint = new Phaser.Math.Vector2();
+    var center = new Phaser.Math.Vector2();
+    planet.getCenter(center);
+    center.x += Phaser.Math.RND.between(-200,200);
+    center.y += Phaser.Math.RND.between(-200,200);
+    // Get the distance from the planet
+    var radius = Phaser.Math.RND.between(500,1500);
+    // Get a point on the cicumference of the spawn area
+    Phaser.Geom.Circle.GetPoint(new Phaser.Geom.Circle(center.x,center.y,radius),Phaser.Math.RND.frac(),spawnPoint);
+    // Set a speed
+    var speed = Phaser.Math.RND.between(50,250);
+    // Point at the planet
+    // TODO: Maybe just point it in a random direction on the unit circle with less velocity, to give a better shape to their approach
+    var dir = center.subtract(spawnPoint);
+    // Set velocity to planet
+    dir.normalize();
+    var velocity = dir.scale(speed);
+
+    var mineralKeys = Object.keys(MineralType);
+
+    var asteroid = new Mineral(
+        scene, 
+        spawnPoint.x, 
+        spawnPoint.y, 
+        MineralType[mineralKeys[Phaser.Math.RND.between(0,mineralKeys.length-1)]], 
+        1, 
+        'asteroid'
+    );
+    asteroid.body.setVelocity(velocity.x,velocity.y);
+    asteroid.setScale(0.25);
+    asteroid.onDestroyed(destroyObject);
+    spaceObjects.push(asteroid);
+    // Schedule another asteroid
+    scene.time.delayedCall(Phaser.Math.RND.integerInRange(1,10)*1000, spawnAsteroid,[scene]);
+}
+
+
+function spawnEnemy(scene)
+{
+    // Points to use
+    var spawnPoint = new Phaser.Math.Vector2();
+    var center = new Phaser.Math.Vector2();
+    planet.getCenter(center);
+    center.x += Phaser.Math.RND.between(-64,64);
+    center.y += Phaser.Math.RND.between(-64,64);
+    // Get the distance from the planet
+    var radius = Phaser.Math.RND.between(500,1500);
+    // Get a point on the cicumference of the spawn area
+    Phaser.Geom.Circle.GetPoint(new Phaser.Geom.Circle(center.x,center.y,radius),Phaser.Math.RND.frac(),spawnPoint);
+    // Set a speed
+    var speed = Phaser.Math.RND.between(10,50);
+    // Point at the planet
+    var dir = center.subtract(spawnPoint);
+    // Set velocity to planet
+    dir.normalize();
+    var velocity = dir.scale(speed);
+
+    var rocket = new EnemyRocket(
+        scene, 
+        spawnPoint.x, 
+        spawnPoint.y,
+        1,
+        'rocket'
+    );
+    rocket.setTarget(center.x,center.y);
+    rocket.body.setVelocity(velocity.x,velocity.y);
+    rocket.setScale(0.25);
+    rocket.onDestroyed(destroyObject);
+    spaceObjects.push(rocket);
+    // Schedule another
+    scene.time.delayedCall(Phaser.Math.RND.integerInRange(3,8)*1000, spawnEnemy,[scene]);
+}
+
 
 function updateMoney(delta)
 {
