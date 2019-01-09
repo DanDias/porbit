@@ -74,7 +74,8 @@ var spawner =
 function preload ()
 {
     this.load.spritesheet('Collector', 'assets/point.png', { frameWidth: 29, frameHeight: 29 });
-    this.load.spritesheet('Shielder', 'assets/point.png', { frameWidth: 29, frameHeight: 29 });
+    this.load.spritesheet('Shielder-full', 'assets/shielder-full.png', { frameWidth: 29, frameHeight: 14 });
+    this.load.spritesheet('Shielder-empty', 'assets/shielder-empty.png', { frameWidth: 29, frameHeight: 14 });
     this.load.spritesheet('WeaponPlatform', 'assets/point.png', { frameWidth: 29, frameHeight: 29 });
     this.load.spritesheet('Interceptor', 'assets/point.png', { frameWidth: 29, frameHeight: 29 });
     this.load.spritesheet('asteroid', 'assets/point.png', { frameWidth: 29, frameHeight: 29 });
@@ -129,13 +130,13 @@ function create ()
         repeat: 0
     };
 
+    this.anims.create(animConfig);
+
     flickEstimate = this.physics.add.sprite(0,0,'');
     flickEstimate.body.mass = pointMass;
     flickEstimate.body.radius = 32*pointScale;
     flickEstimate.body.enable = false;
     flickEstimate.visible = false;
-
-    this.anims.create(animConfig);
 
     //  Events
 
@@ -177,15 +178,21 @@ function create ()
     this.input.on('pointerup', function (pointer) {
         if (!spawning || spawnMode == 'enemies') {return;}
         graphics.clear();
-        var point = new spawnMode.class(this,pointer.downX,pointer.downY,pointMass,spawnMode.class.name);
-        point.setScale(pointScale);
+        var texture = spawnMode.class.name == 'Shielder' ? 'Shielder-full' : spawnMode.class.name; 
+        
+        var point = new spawnMode.class(this,pointer.downX,pointer.downY,pointMass,texture);
+        if (point.type != "Shielder")
+            point.setScale(pointScale);
+        else
+            point.setTarget(planet);
+            
         point.onDestroyed(destroyObject);
 
         // Pull to fling
-        //point.body.velocity.setTo((pointer.downX-pointer.upX)*flickScale,(pointer.downY-pointer.upY)*flickScale);
+        //point.setVelocity((pointer.downX-pointer.upX)*flickScale,(pointer.downY-pointer.upY)*flickScale);
         
         // Flick to fling
-        point.body.velocity.setTo((pointer.upX-pointer.downX)*flickScale,(pointer.upY-pointer.downY)*flickScale);
+        point.setVelocity((pointer.upX-pointer.downX)*flickScale,(pointer.upY-pointer.downY)*flickScale);
 
         spaceObjects.push(point);
         money -= spawnMode.cost;
@@ -297,9 +304,10 @@ function spawnEnemy(scene)
         1,
         'rocket'
     );
+    rocket.rotation = Phaser.Math.Angle.BetweenPoints(rocket,planet)+Math.PI/2;
     rocket.setTarget(center.x,center.y);
     rocket.body.setVelocity(velocity.x,velocity.y);
-    rocket.setScale(0.25);
+    rocket.setScale(0.5);
     rocket.onDestroyed(destroyObject);
     spaceObjects.push(rocket);
     // Schedule another
