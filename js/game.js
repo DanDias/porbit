@@ -212,7 +212,7 @@ function create ()
         }
     });
 
-    //spawnAsteroid(this);
+    this.time.delayedCall(Phaser.Math.RND.integerInRange(8,10)*1000, spawnAsteroid,[this]);
     this.time.delayedCall(Phaser.Math.RND.integerInRange(3,8)*1000, spawnEnemy,[this]);
 }
 
@@ -273,7 +273,7 @@ function spawnAsteroid(scene)
     asteroid.onDestroyed(destroyObject);
     spaceObjects.push(asteroid);
     // Schedule another asteroid
-    scene.time.delayedCall(Phaser.Math.RND.integerInRange(1,10)*1000, spawnAsteroid,[scene]);
+    scene.time.delayedCall(Phaser.Math.RND.integerInRange(8,10)*1000, spawnAsteroid,[scene]);
 }
 
 
@@ -548,7 +548,9 @@ function updateBody(ast_) {
             }
             else
             {
-                destroyed.push(item);
+                if (item.active
+                    && ast_.active)
+                    destroyed.push(item);
             }
         }
     });

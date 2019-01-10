@@ -65,6 +65,44 @@ class Collector extends OrbitObject
         super(scene, x, y, mass, texture, frame);
         this.setTint(0xFF8C00);
         this.type = "Collector";
+        this.detectionRadius = 50;
+        this.caught = [];
+    }
+
+    scanForTarget(objects)
+    {
+        var detectionArea = new Phaser.Geom.Circle(this.x,this.y,this.detectionRadius);
+        objects.forEach((obj) => {
+            if (obj.type === 'Mineral' 
+                && Phaser.Geom.Circle.ContainsPoint(detectionArea,new Phaser.Geom.Point(obj.x,obj.y))
+                && this.caught.filter((v) => v === obj).length == 0)
+            {
+                this.caught.push(obj);
+                // Stop it in its tracks and let it pull into the collector
+                obj.body.setVelocity(0,0);
+                obj.setActive(false);
+                obj.body.enable = false;
+            }
+        });
+    }
+
+    preUpdate(time,delta)
+    {
+        this.caught.forEach((obj) => {
+            var vel = new Phaser.Math.Vector2(this.x-obj.x,this.y-obj.y);
+            vel.normalize();
+            vel.scale(this.body.velocity.length()*0.1,this.body.velocity.length()*0.1);
+            obj.x += vel.x*delta/60;
+            obj.y += vel.y*delta/60;
+            var overlap = new Phaser.Geom.Circle(this.x,this.y,this.body.radius);
+            if (Phaser.Geom.Circle.ContainsPoint(overlap,obj))
+            {
+                this.caught = this.caught.filter((v) => v !== obj);
+                spaceObjects = spaceObjects.filter((v) => v !== obj);
+                money += obj.mineralType.value;
+                obj.destroy();
+            }
+        });
     }
 }
 
