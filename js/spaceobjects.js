@@ -58,37 +58,55 @@ class Planet extends OrbitObject
     }
 }
 
-class Collector extends OrbitObject
+
+class Ship extends OrbitObject
 {
     constructor(scene, x, y, mass, texture, frame)
     {
         super(scene, x, y, mass, texture, frame);
-        this.setTint(0xFF8C00);
-        this.type = "Collector";
+        this.type = "Ship";
         this.detectionRadius = 50;
-        this.caught = [];
+        this.targetTypes = [];
+        this.targets = [];
     }
 
     scanForTarget(objects)
     {
         var detectionArea = new Phaser.Geom.Circle(this.x,this.y,this.detectionRadius);
         objects.forEach((obj) => {
-            if (obj.type === 'Mineral' 
+            if (this.targetTypes.filter((type) => type == obj.type).length > 0 
                 && Phaser.Geom.Circle.ContainsPoint(detectionArea,new Phaser.Geom.Point(obj.x,obj.y))
-                && this.caught.filter((v) => v === obj).length == 0)
+                && this.targets.filter((t) => t === obj).length == 0)
             {
-                this.caught.push(obj);
-                // Stop it in its tracks and let it pull into the collector
-                obj.body.setVelocity(0,0);
-                obj.setActive(false);
-                obj.body.enable = false;
+                console.log(this.type + " acquired target " + obj.type);
+                obj.on("destroy", () => {
+                    this.targets = this.targets.filter((o) => { o !== obj });                    
+                });
+                this.targets.push(obj);
             }
         });
+    }
+}
+
+class Collector extends Ship
+{
+    constructor(scene, x, y, mass, texture, frame)
+    {
+        super(scene, x, y, mass, texture, frame);
+        this.setTint(0xFF8C00);
+        this.type = "Collector";
+        this.caught = [];
+
+        this.targetTypes.push('Mineral');
     }
 
     preUpdate(time,delta)
     {
-        this.caught.forEach((obj) => {
+        this.targets.forEach((obj) => {
+            // Stop it in its tracks and let it pull into the collector
+            obj.body.setVelocity(0,0);
+            obj.setActive(false);
+            obj.body.enable = false;
             var vel = new Phaser.Math.Vector2(this.x-obj.x,this.y-obj.y);
             vel.normalize();
             vel.scale(this.body.velocity.length()*0.1,this.body.velocity.length()*0.1);
@@ -97,7 +115,7 @@ class Collector extends OrbitObject
             var overlap = new Phaser.Geom.Circle(this.x,this.y,this.body.radius);
             if (Phaser.Geom.Circle.ContainsPoint(overlap,obj))
             {
-                this.caught = this.caught.filter((v) => v !== obj);
+                this.targets = this.targets.filter((v) => v !== obj);
                 spaceObjects = spaceObjects.filter((v) => v !== obj);
                 money += obj.mineralType.value;
                 obj.destroy();
@@ -106,7 +124,7 @@ class Collector extends OrbitObject
     }
 }
 
-class Shielder extends OrbitObject
+class Shielder extends Ship
 {
     constructor(scene, x, y, mass, texture, frame)
     {
@@ -154,7 +172,7 @@ class Shielder extends OrbitObject
     }
 }
 
-class WeaponPlatform extends OrbitObject
+class WeaponPlatform extends Ship
 {
     constructor(scene, x, y, mass, texture, frame)
     {
@@ -165,75 +183,7 @@ class WeaponPlatform extends OrbitObject
         this.recharge = 500;
         this.canFire = true;
         this.detectionRadius = 200;
-    }
-
-    scanForTarget(objects)
-    {
-        var detectionArea = new Phaser.Geom.Circle(this.x,this.y,this.detectionRadius);
-        objects.forEach((obj) => {
-            if (obj.type === 'EnemyRocket' 
-                && Phaser.Geom.Circle.ContainsPoint(detectionArea,new Phaser.Geom.Point(obj.x,obj.y)))
-            {
-                this.aimAndFire(obj);
-            }
-        });
-    }
-
-    aimAndFire(obj)
-    {
-        if (this.canFire)
-        {
-            // Things we know
-            var objPos = new Phaser.Math.Vector2(obj.x,obj.y);
-            var objVel = new Phaser.Math.Vector2(obj.body.velocity.x,obj.body.velocity.y);
-            var thisPos = new Phaser.Math.Vector2(this.x,this.y);
-            
-            var ox = thisPos.x - objPos.x;
-            var oy = thisPos.y - objPos.y;
-    
-            var h1 = objVel.x * objVel.x + objVel.y * objVel.y - this.bulletSpeed * this.bulletSpeed;
-            var h2 = ox * objVel.x + oy * objVel.y;
-            var t;
-            if (h1 == 0) { // problem collapses into a simple linear equation 
-                t = -(ox * ox + oy * oy) / (2*h2);
-            } else { // solve the quadratic equation
-                var minusPHalf = -h2 / h1;
-    
-                var discriminant = minusPHalf * minusPHalf - (ox * ox + oy * oy) / h1; // term in brackets is h3
-                if (discriminant < 0) { // no (real) solution then...
-                    return;
-                }
-    
-                var root = Math.sqrt(discriminant);
-    
-                var t1 = minusPHalf + root;
-                var t2 = minusPHalf - root;
-    
-                var tMin = Math.min(t1, t2);
-                var tMax = Math.max(t1, t2);
-    
-                t = tMin > 0 ? tMin : tMax; // get the smaller of the two times, unless it's negative
-                if (t < 0) { // we don't want a solution in the past
-                    return;
-                }
-            }
-
-            //TODO: Not sure why but I have to cut it in half to actually hit
-            t=t*0.5;
-		    // calculate the point of interception using the found intercept time and return it
-            var pointOfIntercept = new Phaser.Math.Vector2(objPos.x + t * objVel.x, objPos.y + t * objVel.y);
-
-
-            var bullet = new Bullet(this.scene,thisPos.x,thisPos.y,'bullet');
-            var bulletVel = new Phaser.Math.Vector2(pointOfIntercept.x-thisPos.x,pointOfIntercept.y-thisPos.y);
-            bulletVel.normalize();
-            bulletVel.scale(this.bulletSpeed);
-            bullet.body.setVelocity(bulletVel.x,bulletVel.y);
-            
-            // For debugging where it's trying to intercept
-            //this.scene.add.circle(pointOfIntercept.x,pointOfIntercept.y,3,0xC0F000,1);
-            this.canFire = false;
-        }
+        this.targetTypes.push('EnemyRocket');
     }
 
     preUpdate(time, delta)
@@ -247,10 +197,85 @@ class WeaponPlatform extends OrbitObject
                 this.canFire = true;
             }
         }
+        else
+        {
+            if (this.targets.length > 0)
+                this.takeAShot();
+        }
+    }
+
+    takeAShot()
+    {
+        // Get closest target
+        var dist = this.detectionRadius*2;
+        var obj = this.targets.filter((v) => {
+            var checkDist = Phaser.Math.Distance.Between(v.x,v.y,this.x,this.y)
+            if (checkDist <= dist)
+            {
+                dist = checkDist;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        })[0];
+        if (obj === undefined)
+            return;
+        // Things we know
+        var objPos = new Phaser.Math.Vector2(obj.x,obj.y);
+        var objVel = new Phaser.Math.Vector2(obj.body.velocity.x,obj.body.velocity.y);
+        var thisPos = new Phaser.Math.Vector2(this.x,this.y);
+        
+        var ox = thisPos.x - objPos.x;
+        var oy = thisPos.y - objPos.y;
+
+        var h1 = objVel.x * objVel.x + objVel.y * objVel.y - this.bulletSpeed * this.bulletSpeed;
+        var h2 = ox * objVel.x + oy * objVel.y;
+        var t;
+        if (h1 == 0) { // problem collapses into a simple linear equation 
+            t = -(ox * ox + oy * oy) / (2*h2);
+        } else { // solve the quadratic equation
+            var minusPHalf = -h2 / h1;
+
+            var discriminant = minusPHalf * minusPHalf - (ox * ox + oy * oy) / h1; // term in brackets is h3
+            if (discriminant < 0) { // no (real) solution then...
+                return;
+            }
+
+            var root = Math.sqrt(discriminant);
+
+            var t1 = minusPHalf + root;
+            var t2 = minusPHalf - root;
+
+            var tMin = Math.min(t1, t2);
+            var tMax = Math.max(t1, t2);
+
+            t = tMin > 0 ? tMin : tMax; // get the smaller of the two times, unless it's negative
+            if (t < 0) { // we don't want a solution in the past
+                return;
+            }
+        }
+
+        //TODO: Not sure why but I have to cut it in half to actually hit
+        t=t*0.5;
+        // calculate the point of interception using the found intercept time and return it
+        var pointOfIntercept = new Phaser.Math.Vector2(objPos.x + t * objVel.x, objPos.y + t * objVel.y);
+
+
+        var bullet = new Bullet(this.scene,thisPos.x,thisPos.y,'bullet');
+        var bulletVel = new Phaser.Math.Vector2(pointOfIntercept.x-thisPos.x,pointOfIntercept.y-thisPos.y);
+        bulletVel.normalize();
+        bulletVel.scale(this.bulletSpeed);
+        bullet.body.setVelocity(bulletVel.x,bulletVel.y);
+        
+        // For debugging where it's trying to intercept
+        //this.scene.add.circle(pointOfIntercept.x,pointOfIntercept.y,3,0xC0F000,1);
+        this.canFire = false;
     }
 }
 
-class Bullet extends Phaser.GameObjects.Sprite 
+class Bullet extends Phaser.GameObjects.Sprite
 {
     constructor(scene,x,y,texture,frame)
     {
@@ -266,12 +291,12 @@ class Bullet extends Phaser.GameObjects.Sprite
         scene.physics.world.bodies.entries.forEach((v) => {
             if (v.gameObject.type == "EnemyRocket")
             {
-                scene.physics.add.overlap(this,v.gameObject,this.checkOverlap,null,this);
+                scene.physics.add.overlap(this,v.gameObject,this.overlaps,null,this);
             }
         })
     }
 
-    checkOverlap(bullet,other)
+    overlaps(bullet,other)
     {
         other.takeDamage(1);
         bullet.life = 0;
@@ -297,7 +322,7 @@ class Bullet extends Phaser.GameObjects.Sprite
     }
 }
 
-class Interceptor extends OrbitObject
+class Interceptor extends Ship
 {
     constructor(scene, x, y, mass, texture, frame)
     {
@@ -307,7 +332,7 @@ class Interceptor extends OrbitObject
     }
 }
 
-class EnemyRocket extends OrbitObject
+class EnemyRocket extends Ship
 {
     constructor(scene, x, y, mass, texture, frame)
     {
