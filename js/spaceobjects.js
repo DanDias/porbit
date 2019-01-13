@@ -86,6 +86,68 @@ class Ship extends OrbitObject
             }
         });
     }
+
+    getClosestTarget() 
+    {
+        var dist = this.detectionRadius*2;
+        var obj = this.targets.filter((v) => {
+            var checkDist = Phaser.Math.Distance.Between(v.x,v.y,this.x,this.y)
+            if (checkDist <= dist)
+            {
+                dist = checkDist;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        })[0];
+        return obj;
+    }
+
+    getInterceptPoint(obj,speed)
+    {
+        // Things we know
+        var objPos = new Phaser.Math.Vector2(obj.x,obj.y);
+        var objVel = new Phaser.Math.Vector2(obj.body.velocity.x,obj.body.velocity.y);
+        var thisPos = new Phaser.Math.Vector2(this.x,this.y);
+        
+        var ox = thisPos.x - objPos.x;
+        var oy = thisPos.y - objPos.y;
+
+        var h1 = objVel.x * objVel.x + objVel.y * objVel.y - speed * speed;
+        var h2 = ox * objVel.x + oy * objVel.y;
+        var t;
+        if (h1 == 0) { // problem collapses into a simple linear equation 
+            t = -(ox * ox + oy * oy) / (2*h2);
+        } else { // solve the quadratic equation
+            var minusPHalf = -h2 / h1;
+
+            var discriminant = minusPHalf * minusPHalf - (ox * ox + oy * oy) / h1; // term in brackets is h3
+            if (discriminant < 0) { // no (real) solution then...
+                return;
+            }
+
+            var root = Math.sqrt(discriminant);
+
+            var t1 = minusPHalf + root;
+            var t2 = minusPHalf - root;
+
+            var tMin = Math.min(t1, t2);
+            var tMax = Math.max(t1, t2);
+
+            t = tMin > 0 ? tMin : tMax; // get the smaller of the two times, unless it's negative
+            if (t < 0) { // we don't want a solution in the past
+                return;
+            }
+        }
+
+        //TODO: Not sure why but I have to cut it in half to actually hit
+        t=t*0.5;
+        // calculate the point of interception using the found intercept time and return it
+        return new Phaser.Math.Vector2(objPos.x + t * objVel.x, objPos.y + t * objVel.y);
+
+    }
 }
 
 class Collector extends Ship
@@ -179,94 +241,61 @@ class WeaponPlatform extends Ship
         super(scene, x, y, mass, texture, frame);
         this.setTint(0xAA0000);
         this.type = "WeaponPlatform";
-        this.bulletSpeed = 200;
-        this.recharge = 500;
-        this.canFire = true;
         this.detectionRadius = 200;
         this.targetTypes.push('EnemyRocket');
+
+        this.gun = new Gun(this,500,200);
     }
 
     preUpdate(time, delta)
+    {
+        this.gun.update(delta);
+        if (this.gun.canFire && this.targets.length > 0)
+        {
+            var obj = this.getClosestTarget();
+            // Get closest target
+            if (obj === undefined)
+                return;
+
+            var pointOfIntercept = this.getInterceptPoint(obj,this.gun.speed);
+            if (pointOfIntercept === undefined)
+                return;
+
+            this.gun.takeAShot(pointOfIntercept);
+        }
+    }
+}
+
+class Gun 
+{
+    constructor(parent,recharge,speed)
+    {
+        this.parent = parent;
+        this.rechargeMax = recharge;
+        this.recharge = recharge;
+        this.speed = speed;
+        this.canFire = false;
+    }
+
+    update(delta)
     {
         if (this.canFire == false)
         {
             this.recharge -= delta;
             if (this.recharge <= 0)
             {
-                this.recharge = 500;
+                this.recharge = this.rechargeMax;
                 this.canFire = true;
             }
         }
-        else
-        {
-            if (this.targets.length > 0)
-                this.takeAShot();
-        }
     }
 
-    takeAShot()
+    takeAShot(aimPoint)
     {
-        // Get closest target
-        var dist = this.detectionRadius*2;
-        var obj = this.targets.filter((v) => {
-            var checkDist = Phaser.Math.Distance.Between(v.x,v.y,this.x,this.y)
-            if (checkDist <= dist)
-            {
-                dist = checkDist;
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        })[0];
-        if (obj === undefined)
-            return;
-        // Things we know
-        var objPos = new Phaser.Math.Vector2(obj.x,obj.y);
-        var objVel = new Phaser.Math.Vector2(obj.body.velocity.x,obj.body.velocity.y);
-        var thisPos = new Phaser.Math.Vector2(this.x,this.y);
-        
-        var ox = thisPos.x - objPos.x;
-        var oy = thisPos.y - objPos.y;
-
-        var h1 = objVel.x * objVel.x + objVel.y * objVel.y - this.bulletSpeed * this.bulletSpeed;
-        var h2 = ox * objVel.x + oy * objVel.y;
-        var t;
-        if (h1 == 0) { // problem collapses into a simple linear equation 
-            t = -(ox * ox + oy * oy) / (2*h2);
-        } else { // solve the quadratic equation
-            var minusPHalf = -h2 / h1;
-
-            var discriminant = minusPHalf * minusPHalf - (ox * ox + oy * oy) / h1; // term in brackets is h3
-            if (discriminant < 0) { // no (real) solution then...
-                return;
-            }
-
-            var root = Math.sqrt(discriminant);
-
-            var t1 = minusPHalf + root;
-            var t2 = minusPHalf - root;
-
-            var tMin = Math.min(t1, t2);
-            var tMax = Math.max(t1, t2);
-
-            t = tMin > 0 ? tMin : tMax; // get the smaller of the two times, unless it's negative
-            if (t < 0) { // we don't want a solution in the past
-                return;
-            }
-        }
-
-        //TODO: Not sure why but I have to cut it in half to actually hit
-        t=t*0.5;
-        // calculate the point of interception using the found intercept time and return it
-        var pointOfIntercept = new Phaser.Math.Vector2(objPos.x + t * objVel.x, objPos.y + t * objVel.y);
-
-
-        var bullet = new Bullet(this.scene,thisPos.x,thisPos.y,'bullet');
-        var bulletVel = new Phaser.Math.Vector2(pointOfIntercept.x-thisPos.x,pointOfIntercept.y-thisPos.y);
+        var bullet = new Bullet(this.parent.scene,this.parent.x,this.parent.y,'bullet');
+        var bulletVel = new Phaser.Math.Vector2(aimPoint.x-this.parent.x,aimPoint.y-this.parent.y);
         bulletVel.normalize();
-        bulletVel.scale(this.bulletSpeed);
+        bulletVel.scale(this.speed);
         bullet.body.setVelocity(bulletVel.x,bulletVel.y);
         
         // For debugging where it's trying to intercept
@@ -329,7 +358,105 @@ class Interceptor extends Ship
         super(scene, x, y, mass, texture, frame);
         this.setTint(0x00AA00);
         this.type = "Interceptor";
+        this.detectionRadius = 300;
+        this.speed = 300;
+        this.targetTypes.push("EnemyRocket");
+        this.gun = new Gun(this,100,100);
+
+        this.mode = "idle";
     }
+
+    engage(obj)
+    {
+        this.originalVelocity = new Phaser.Math.Vector2(this.body.velocity.x,this.body.velocity.y);
+        this.originalPosition = new Phaser.Math.Vector2(this.x,this.y);
+
+        this.mode = "engaging";
+    }
+
+    preUpdate(time,delta)
+    {
+        // remove any expired targets
+        this.targets = this.targets.filter((t) => {
+            return t.active;
+        });
+        var target;
+        if (this.targets.length == 0 && this.mode != "idle")
+        {
+            this.mode = "returning";
+        }
+        else
+        {
+            target = this.targets[0];
+        }
+        switch(this.mode)
+        {
+            case "idle":
+            {
+                // See if we have a target and engage them
+                if (this.targets.length > 0)
+                {
+                    this.engage(this.targets[0]);
+                }
+                break;
+            }
+            case "engaging":
+            {
+                // Flying to engage
+                var pointOfIntercept = this.getInterceptPoint(target,this.speed);
+                if (pointOfIntercept !== undefined)
+                {
+                    var newVelocity = new Phaser.Math.Vector2(pointOfIntercept.x-this.x,pointOfIntercept.y-this.y);
+                    newVelocity.normalize();
+                    newVelocity.scale(this.speed*(delta/60));
+                    this.setVelocity(newVelocity.x,newVelocity.y);
+                }
+
+                // Fire gun
+                this.gun.update(delta);
+                if (this.gun.canFire && this.targets.length > 0)
+                {
+                    var obj = this.getClosestTarget();
+                    // Get closest target
+                    if (obj === undefined)
+                        return;
+        
+                    var aimPoint = new Phaser.Math.Vector2(obj.x+obj.body.velocity.x,obj.y+obj.body.velocity.y);
+                    this.gun.takeAShot(aimPoint);
+                }
+                break;
+            }
+            case "returning":
+            {
+                // Return to position and velocity
+                var vel;
+                var dist = Phaser.Math.Distance.Between(this.originalPosition.x,this.originalPosition.y,this.x,this.y);
+                if (dist <= 1)
+                {
+                    vel = this.originalVelocity;
+                    this.mode = "idle";
+                }
+                else
+                {
+                    vel = new Phaser.Math.Vector2(this.originalPosition.x-this.x,this.originalPosition.y-this.y);
+                    vel.normalize();
+                    vel.scale(this.speed*(delta/60));
+                }
+                this.setVelocity(vel.x,vel.y);
+                break;
+            }
+        }
+    }
+
+    /*
+    setVelocity(x,y)
+    {
+        if (this.mode == "engaging")
+        {
+
+        }
+        super.setVelocity(x,y);
+    }*/
 }
 
 class EnemyRocket extends Ship

@@ -12,5 +12,7 @@
 * Find a better way to do object collision events
 * Run asteroids through simulation engine to get a predictable path
 * Maybe change shield concept to have them provide a full shield to the planet as long as they are in orbit. 1 durability per 2 satellites.
-* Interceptor to do it's normal orbit, when it detects something it'll fly out, attack it and then return to the orbit.
 * CLEAN UP!
+* ~~Refactor to merge gun functionality~~
+* ~~Refactor to merge targetting functionality~~
+* ~~Interceptor to do it's normal orbit, when it detects something it'll fly out, attack it and then return to the orbit.~~ 
