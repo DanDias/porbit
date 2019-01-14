@@ -3,7 +3,8 @@
         "target": "ES6"
     },
     "include": [
-        "js/**/*"
+        "src",
+        "src/**/*"
     ],
     "exclude": [
         "node_modules",
