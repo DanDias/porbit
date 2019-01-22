@@ -8,6 +8,7 @@ Defend your planet from celestial dangers by purchasing devices and launching th
 * Resize all game elements when game area/window resizes
 * Object pooling...
 * Find a better way to do object collision events
+    * Using physics groups and adding an overlap callback resulted in stuff blowing itself up and way more events than wanted... but seems like the right way. Explore that in the future.
 * CLEAN UP!
 ### Money Gathering
 * Maybe just point asteroid in a random direction on the unit circle with less velocity, to give a better shape to their approach
