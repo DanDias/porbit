@@ -12,9 +12,7 @@ var definePlugin = new webpack.DefinePlugin({
 
 module.exports = {
   entry: {
-    app: [
-      path.resolve(__dirname, 'src/game.js')
-    ],
+    app: ['./src/game.js', './server.js'],
     vendor: ['phaser']
   },
   devtool: 'source-map',
@@ -27,6 +25,7 @@ module.exports = {
   watch: true,
   optimization: {
     splitChunks: {
+        chunks: 'all',
         cacheGroups: {
             default: false,
             vendors: false,

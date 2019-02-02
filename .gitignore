@@ -86,3 +86,4 @@ typings/
 !.vscode/extensions.json
 
 js/phaser.js
+dist/*

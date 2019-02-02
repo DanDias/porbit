@@ -22,7 +22,7 @@ Defend your planet from celestial dangers by purchasing devices and launching th
 * Interceptor object avoidance (planet and target)
 * Interceptor rejoin on closest point in original velocity rather than exactly at original position?
 * Interceptor fire faster.
-* Shielder - Have them provide a full shield to the planet as long as they are in orbit. 1 durability per 2 satellites.
+* ~~Shielder - Have them provide a full shield to the planet as long as they are in orbit.~~
 * ~~Interceptor to do it's normal orbit, when it detects something it'll fly out, attack it and then return to the orbit.~~ 
 ### Planet
 * Change planet sprites as duribility degrades

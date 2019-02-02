@@ -103,6 +103,7 @@ function preload ()
     this.load.spritesheet('planet', 'assets/planet.png', { frameWidth: 107, frameHeight: 109});
     this.load.spritesheet('boom', 'assets/explosion.png', { frameWidth: 64, frameHeight: 64, endFrame: 23 });
     this.load.spritesheet('rocket', 'assets/rocket.png', { frameWidth: 23, frameHeight: 38});
+    this.load.atlas('flares', 'assets/flares.png', 'assets/flares.json');
 }
 
 function create ()
@@ -608,6 +609,7 @@ function updateBody(ast_) {
         var r = dx * dx + dy * dy;
         if (r < planet.body.radius * planet.body.radius) { //|| (r > killRadius * killRadius)) {       
             ast_.takeDamage(1);
+            planet.takeDamage(1);
         } else {
             scene.physics.accelerateToObject(ast_, planet, (planet.body.mass / r));
             ax = ax + ast_.body.acceleration.x;       

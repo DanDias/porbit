@@ -1,11 +1,14 @@
-var express = require('express');
+import express from 'express';
+import https from 'https';
+import http from 'http';
+
 var app = express();
 var port = process.env.PORT || 8080;
 var server;
 if (port == 443)
-    server = require('https').Server(app);
+    server = https.Server(app);
 else
-    server = require('http').Server(app);
+    server = http.Server(app);
 
 app.use('/css',express.static(__dirname + '/css'));
 app.use('/js',express.static(__dirname + '/js'));

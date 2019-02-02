@@ -10,11 +10,34 @@ export default class extends Ship
         this.type = "Shielder";
         this.empty = false;
         this.rechargeTimer = 0;
+        this.particles = scene.add.particles('flares');
+
+        this.emitter = this.particles.createEmitter({
+            frame: { frames: ['blue'], cycle:true },
+            quantity: 4,
+            frequency: 50,
+            scale: 0.15,
+            lifespan: 4000,
+            blendMode: 'SCREEN'
+        });
+
+        this.emitter.startFollow(this,0,0,true);
     }
 
     setTarget(target)
     {
         this.target = target;
+        this.target.addShielder(this);
+
+        this.particles.createGravityWell({
+            x: this.target.x,
+            y: this.target.y,
+            power: 1,
+            gravity: 100
+        });
+
+        var circle = new Phaser.Geom.Circle(this.target.x,this.target.y,this.target.body.halfWidth);
+        this.emitter.setDeathZone({ type: 'onEnter', source: circle });
     }
 
     preUpdate(time,delta)
@@ -26,7 +49,9 @@ export default class extends Ship
             {
                 this.empty = false;
                 this.rechargeTimer = 0;
-                this.setTexture('Shielder-full');
+                this.durability = 1;
+                this.target.updateShield(true);
+                this.emitter.start();
             }
         }
         this.rotation = Phaser.Math.Angle.BetweenPoints(this,this.target)+3*Math.PI/2;
@@ -35,14 +60,17 @@ export default class extends Ship
     takeDamage(damage)
     {
         if (this.destroyed !== undefined && this.durability <= 0)
+        {
+            this.target.removeShielder(this);
             this.destroyed(this);
+        }
         else
         {
             this.durability -= damage; // TODO: Use mass and speed somehow instead?
 
             if (this.durability == 0)
             {
-                this.setTexture('Shielder-empty');
+                this.emitter.stop();
                 this.empty = true;
             }
         }
