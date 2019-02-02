@@ -1,6 +1,6 @@
-import express from 'express';
-import https from 'https';
-import http from 'http';
+const express = require('express');
+const https =  require('https');
+const http = require('http');
 
 var app = express();
 var port = process.env.PORT || 8080;
@@ -12,6 +12,7 @@ else
 
 app.use('/css',express.static(__dirname + '/css'));
 app.use('/js',express.static(__dirname + '/js'));
+app.use('/dist',express.static(__dirname + '/dist'));
 app.use('/assets',express.static(__dirname + '/assets'));
 
 app.get('/',function(req,res){
