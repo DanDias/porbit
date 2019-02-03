@@ -109,39 +109,12 @@ function create ()
     graphics = this.add.graphics();
 
     this.events.on('resize', resize, this);
-
-    moneyText = new Phaser.GameObjects.Text(this, 10, 10, "Money: "+money, { fill: '#FFF' });
-    this.add.existing(moneyText);
-
-    var debugBtn = new UIButton(this, config.width-85, config.height-25, 160, 50, (cost ? '' : 'Don\'t\n')+" Enforce Cost", { fill: '#000' });
-    debugBtn.on("pointerdown", function(pointer) {
-        pointer.event.cancelBubble = true;
-        cost = !cost;
-        this.setText((cost ? '' : 'Don\'t\n')+" Enforce Cost");
-    });
-
-    var xLoc = 75;
-    Object.keys(spawner).forEach(function(key) {
-        var item = spawner[key];
-        var btn = new UIButton(this, xLoc, config.height-40, 150, 50, key+"\n$"+item.cost, { fill: '#000' });
-        btn.on("pointerdown", function(pointer) {
-            spawnButtons.forEach((b) => {
-                b.setSelected(false);
-            });
-            pointer.event.cancelBubble = true;
-            spawnMode = item;
-            this.setSelected(true);
-        });
-        if (spawnMode === null)
-        {
-            spawnMode = item;
-            btn.setSelected(true);
-        }
-        xLoc += 150
-        spawnButtons.push(btn);
-    },this);
-
+    
     planet = new Planet(this,config.width/2,config.height/2,planetMass,'planet');
+
+    resize(window.innerWidth,window.innerHeight);
+
+    initializeUI(this);
 
     var animConfig = {
         key: 'explode',
@@ -255,7 +228,6 @@ function create ()
     this.time.delayedCall(Phaser.Math.RND.integerInRange(3,8)*1000, spawnEnemy,[this]);
 }
 
-
 window.addEventListener('resize', function (event) {
     game.resize(window.innerWidth, window.innerHeight);
 }, false);
@@ -274,6 +246,42 @@ function resize(width,height)
     var x = -halfWidth + planet.x;
     var y = -halfHeight + planet.y;
     scene.cameras.main.setScroll(x,y);
+    config.width = width;
+    config.height = height;
+}
+
+function initializeUI(scene)
+{
+    moneyText = new Phaser.GameObjects.Text(scene, 10, 10, "Money: "+money, { fill: '#FFF' });
+    scene.add.existing(moneyText);
+
+    var debugBtn = new UIButton(scene, config.width-85, config.height-25, 160, 50, (cost ? '' : 'Don\'t\n')+" Enforce Cost", { fill: '#000' });
+    debugBtn.on("pointerdown", function(pointer) {
+        pointer.event.cancelBubble = true;
+        cost = !cost;
+        this.setText((cost ? '' : 'Don\'t\n')+" Enforce Cost");
+    });
+
+    var xLoc = 75;
+    Object.keys(spawner).forEach(function(key) {
+        var item = spawner[key];
+        var btn = new UIButton(scene, xLoc, config.height-40, 150, 50, key+"\n$"+item.cost, { fill: '#000' });
+        btn.on("pointerdown", function(pointer) {
+            spawnButtons.forEach((b) => {
+                b.setSelected(false);
+            });
+            pointer.event.cancelBubble = true;
+            spawnMode = item;
+            this.setSelected(true);
+        });
+        if (spawnMode === null)
+        {
+            spawnMode = item;
+            btn.setSelected(true);
+        }
+        xLoc += 150
+        spawnButtons.push(btn);
+    },scene);
 }
 
 function update(elapsedTime, delta)
