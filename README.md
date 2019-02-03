@@ -25,11 +25,11 @@ Defend your planet from celestial dangers by purchasing devices and launching th
 * ~~Shielder - Have them provide a full shield to the planet as long as they are in orbit.~~
 * ~~Interceptor to do it's normal orbit, when it detects something it'll fly out, attack it and then return to the orbit.~~ 
 ### Planet
-* Change planet sprites as duribility degrades
+* Change planet sprites as durability degrades
 ### Systems Design
 * Use mass and speed to inflict damage instead of just 1 point every time?
 * Planet Durability
 * Fail/Win Conditions
 * Intercept formula - not sure why but I have to cut it in half to actually hit. And that doesn't work with all speeds. Unit conversion problem?
 * ~~Refactor to merge gun functionality~~
-* ~~Refactor to merge targetting functionality~~
+* ~~Refactor to merge targeting functionality~~

@@ -279,7 +279,7 @@ function spawnAsteroid(scene)
     center.y += Phaser.Math.RND.between(-200,200);
     // Get the distance from the planet
     var radius = Phaser.Math.RND.between(500,1500);
-    // Get a point on the cicumference of the spawn area
+    // Get a point on the circumference of the spawn area
     Phaser.Geom.Circle.GetPoint(new Phaser.Geom.Circle(center.x,center.y,radius),Phaser.Math.RND.frac(),spawnPoint);
     // Set a speed
     var speed = Phaser.Math.RND.between(50,250);
@@ -319,7 +319,7 @@ function spawnEnemy(scene)
     center.y += Phaser.Math.RND.between(-64,64);
     // Get the distance from the planet
     var radius = Phaser.Math.RND.between(500,1500);
-    // Get a point on the cicumference of the spawn area
+    // Get a point on the circumference of the spawn area
     Phaser.Geom.Circle.GetPoint(new Phaser.Geom.Circle(center.x,center.y,radius),Phaser.Math.RND.frac(),spawnPoint);
     // Set a speed
     var speed = Phaser.Math.RND.between(10,50);
