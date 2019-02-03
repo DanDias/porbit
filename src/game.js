@@ -34,11 +34,9 @@ var config = {
     }
 };
 
-window.addEventListener('resize', function (event) {
+var referenceWidth = 1024;
+var referenceHeight = 768;
 
-    game.resize(window.innerWidth, window.innerHeight);
-
-}, false);
 var spaceObjects = [];
 var pointMass = 1;
 var pointScale = 0.25;
@@ -110,6 +108,8 @@ function create ()
 {
     graphics = this.add.graphics();
 
+    this.events.on('resize', resize, this);
+
     moneyText = new Phaser.GameObjects.Text(this, 10, 10, "Money: "+money, { fill: '#FFF' });
     this.add.existing(moneyText);
 
@@ -163,9 +163,10 @@ function create ()
     this.input.on('pointerdown', function (pointer) {
         if (pointer.event.cancelBubble == true) {return;}
 
+        var downPoint = this.cameras.main.getWorldPoint(pointer.x,pointer.y);
         if (money < spawnMode.cost && cost) 
         {
-            var error = new FloatingText(this,pointer.x,pointer.y+30,"Need at least "+spawnMode.cost+" money", {fill:'#FFF'});
+            var error = new FloatingText(this,downPoint.x,downPoint.y+30,"Need at least "+spawnMode.cost+" money", {fill:'#FFF'});
             this.add.existing(error);
             pointer.event.cancelBubble = true;
             return;
@@ -174,7 +175,7 @@ function create ()
         if (spawnMode == 'enemies')
         {
             // Spawn Rocket
-            var enemy = new EnemyRocket(this,pointer.x,pointer.y,pointMass,'rocket');
+            var enemy = new EnemyRocket(this,downPoint.x,downPoint.y,pointMass,'rocket');
             this.physics.accelerateToObject(enemy, planet, 5);
             enemy.rotation = Phaser.Math.Angle.BetweenPoints(enemy,planet)+Math.PI/2;
             enemy.setScale(pointScale);
@@ -186,7 +187,7 @@ function create ()
         {
             flickEstimate.body.velocity = Phaser.Math.Vector2.ZERO;
 
-            var points = simulateFrom(flickEstimate,pointer.x,pointer.y,simulationSteps);
+            var points = simulateFrom(flickEstimate,downPoint.x,downPoint.y,simulationSteps);
             for(var i=0;i<points.length-1;i++)
             {
                 drawLine(points[i].x,points[i].y,points[i+1].x,points[i+1].y,2,0xff0ff);
@@ -200,7 +201,10 @@ function create ()
         graphics.clear();
         var texture = spawnMode.name == 'Shielder' ? 'Shielder-full' : spawnMode.name; 
         
-        var point = new spawnMode.class(this,pointer.downX,pointer.downY,pointMass,texture);
+        var downPoint = this.cameras.main.getWorldPoint(pointer.downX,pointer.downY);
+        var upPoint = this.cameras.main.getWorldPoint(pointer.upX,pointer.upY)
+
+        var point = new spawnMode.class(this,downPoint.x,downPoint.y,pointMass,texture);
         if (spawnMode.name != "Shielder")
         {
             point.setScale(pointScale);
@@ -224,7 +228,7 @@ function create ()
         //point.setVelocity((pointer.downX-pointer.upX)*flickScale,(pointer.downY-pointer.upY)*flickScale);
         
         // Flick to fling
-        point.setVelocity((pointer.upX-pointer.downX)*flickScale,(pointer.upY-pointer.downY)*flickScale);
+        point.setVelocity((upPoint.x-downPoint.x)*flickScale,(upPoint.y-downPoint.y)*flickScale);
 
         spaceObjects.push(point);
         money -= spawnMode.cost;
@@ -236,8 +240,11 @@ function create ()
         // Only do stuff if the pointer is down
         graphics.clear();
 
-        flickEstimate.body.velocity.setTo((pointer.x-pointer.downX)*flickScale,(pointer.y-pointer.downY)*flickScale);
-        var points = simulateFrom(flickEstimate,pointer.downX,pointer.downY,simulationSteps);
+        var downPoint = this.cameras.main.getWorldPoint(pointer.downX,pointer.downY);
+        var currentPoint = this.cameras.main.getWorldPoint(pointer.x,pointer.y);
+
+        flickEstimate.body.velocity.setTo((currentPoint.x-downPoint.x)*flickScale,(currentPoint.y-downPoint.y)*flickScale);
+        var points = simulateFrom(flickEstimate,downPoint.x,downPoint.y,simulationSteps);
         for(var i=0;i<points.length-1;i++)
         {
             drawLine(points[i].x,points[i].y,points[i+1].x,points[i+1].y,2,0xff0ff);
@@ -246,6 +253,27 @@ function create ()
 
     this.time.delayedCall(Phaser.Math.RND.integerInRange(8,10)*1000, spawnAsteroid,[this]);
     this.time.delayedCall(Phaser.Math.RND.integerInRange(3,8)*1000, spawnEnemy,[this]);
+}
+
+
+window.addEventListener('resize', function (event) {
+    game.resize(window.innerWidth, window.innerHeight);
+}, false);
+
+function resize(width,height)
+{
+    var scene = game.scene.scenes[0];
+    // TODO: Detect landscape vs portrait?
+    // Set zoom level to keep the area around the planet visible
+    scene.cameras.main.setZoom(width/referenceWidth);
+    // Set viewport so you can see everything..
+    scene.cameras.main.setViewport(0,0,width,height);
+    // Scroll so the planet is roughly in the center
+    var halfWidth = width*0.5;
+    var halfHeight = height*0.5;
+    var x = -halfWidth + planet.x;
+    var y = -halfHeight + planet.y;
+    scene.cameras.main.setScroll(x,y);
 }
 
 function update(elapsedTime, delta)
@@ -259,14 +287,6 @@ function update(elapsedTime, delta)
     });
 
     updateMoney(delta);
-}
-
-function resize (width, height)
-{
-    if (width === undefined) { width = this.sys.game.config.width; }
-    if (height === undefined) { height = this.sys.game.config.height; }
-
-    // TODO: Resize all game elements
 }
 
 function spawnAsteroid(scene)
