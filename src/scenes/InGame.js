@@ -28,6 +28,7 @@ export default class extends Phaser.Scene
 
         this.money = 0;
         this.timer = 0;
+        this.gameOver = false;
 
         this.referenceWidth = 1024;
         this.referenceHeight = 768;
@@ -43,11 +44,14 @@ export default class extends Phaser.Scene
             }
         },this);
 
-        this.timer += delta;
-        if (this.timer > 500)
+        if (!this.gameOver)
         {
-            this.money += 1;
-            this.timer = 0;
+            this.timer += delta;
+            if (this.timer > 500)
+            {
+                this.money += 1;
+                this.timer = 0;
+            }
         }
     }
 
@@ -79,6 +83,8 @@ export default class extends Phaser.Scene
         this.events.on('resize', me.resize, me);
         
         this.planet = new Planet(this,config.width/2,config.height/2,this.planetMass,'planet');
+
+        this.planet.onDestroyed(this.destroyObject);
 
         this.resize(window.innerWidth,window.innerHeight);
 
@@ -295,7 +301,14 @@ export default class extends Phaser.Scene
         scene.spaceObjects = scene.spaceObjects.filter((val, idx) => {
             return obj != val;
         });
+        if (obj.type == "Planet")
+            this.scene.setGameOver();
         obj.destroy();
+    }
+
+    setGameOver()
+    {
+        this.uiScene.setGameOver();
     }
 
     simulateFrom(obj,x,y,steps)
@@ -364,6 +377,8 @@ export default class extends Phaser.Scene
         var dx = obj.x - this.planet.x;
         var dy = obj.y - this.planet.y;     
         var r = dx * dx + dy * dy;
+        if (!this.planet.active)
+            return true;
         if (r < this.planet.body.radius * this.planet.body.radius) { //|| (r > killRadius * killRadius)) {       
             return false;
         } else {
@@ -529,6 +544,8 @@ export default class extends Phaser.Scene
             var dx = ast_.x - scene.planet.x;     
             var dy = ast_.y - scene.planet.y;     
             var r = dx * dx + dy * dy;
+            if (!scene.planet.active)
+                return;
             if (r < scene.planet.body.radius * scene.planet.body.radius) { //|| (r > killRadius * killRadius)) {       
                 ast_.takeDamage(1);
                 scene.planet.takeDamage(1);

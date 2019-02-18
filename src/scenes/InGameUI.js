@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { UIButton, FloatingText } from '../components/ui';
+import { UIButton, FloatingText, FPSCounter } from '../components/ui';
 import Spawner from '../components/Spawner';
 
 export default class extends Phaser.Scene
@@ -10,6 +10,7 @@ export default class extends Phaser.Scene
         this.moneyText = null;
         this.spawner = new Spawner();
         this.spawnButtons = [];
+        this.gameOver = false;
     }
 
     preload()
@@ -20,12 +21,6 @@ export default class extends Phaser.Scene
     update(delta,time)
     {
         this.moneyText.text = "Money: "+this.gameScene.money;
-        var fps = this.game.loop.actualFps;
-        this.fpsActiveText.text = fps;
-        if (this.fpsActiveText.high < fps)
-            this.fpsActiveText.high = this.fpsHighText.text = fps;
-        if (this.fpsActiveText.low > fps)
-            this.fpsActiveText.low = this.fpsLowText.text = fps; 
     }
 
     showError(text,pos)
@@ -34,23 +29,25 @@ export default class extends Phaser.Scene
         this.add.existing(error);
     }
 
+    setGameOver()
+    {
+        this.gameOver = true;
+        this.spawnButtons.forEach((b) => {
+            b.active = false;
+        });
+        this.gameOverText = new Phaser.GameObjects.Text(this, this.game.config.width/2-35, this.game.config.height/2, "Game over, man.", { fill: '#F00', fontWeight: 'bold' });
+        this.add.existing(this.gameOverText);
+    }
+
     create()
     {
         var config = this.game.config;
         this.gameScene = this.game.scene.getScene('InGame');
 
         this.moneyText = new Phaser.GameObjects.Text(this, 10, 10, "Money: "+this.gameScene.money, { fill: '#FFF' });
-        this.fpsHighText = new Phaser.GameObjects.Text(this, this.game.config.width-75, 10, "", { fill: '#0A0', fontSize: '10px'} );
-        this.fpsActiveText = new Phaser.GameObjects.Text(this, this.game.config.width-75, 20, "", { fill: '#AA0', fontSize: '10px'} );
-        this.fpsLowText = new Phaser.GameObjects.Text(this, this.game.config.width-75, 30, "", { fill: '#A00', fontSize: '10px'} );
-    
-        this.fpsActiveText.low = 999;
-        this.fpsActiveText.high = 0;
+        this.fps = new FPSCounter(this, this.game.config.width-25, 10);
 
         this.add.existing(this.moneyText);
-        this.add.existing(this.fpsHighText);
-        this.add.existing(this.fpsActiveText);
-        this.add.existing(this.fpsLowText);
 
         var debugBtn = new UIButton(this, this.game.config.width-85, this.game.config.height-25, 160, 50, (this.gameScene.cost ? '' : 'Don\'t\n')+" Enforce Cost", { fill: '#000' });
         var gameScene = this.gameScene;

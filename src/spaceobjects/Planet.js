@@ -1,15 +1,16 @@
 import OrbitObject from './OrbitObject'
+import { HealthBar } from '../components/ui';
 
 export default class extends OrbitObject
 {
     constructor(scene, x, y, mass, texture, frame)
     {
         super(scene, x, y, mass, texture, frame);
-        // TODO: realistic durability
-        this.durability = 999999999999999999999999;
+        this.durability = 10;
         this.scale = 1;
         this.setScale(this.scale);
         this.type = "Planet";
+        this.hp = new HealthBar(scene, x-this.width*0.38, y-this.height*0.9, this.durability);
 
         this.shielders = [];
         this.particles = scene.add.particles('flares');
@@ -61,6 +62,9 @@ export default class extends OrbitObject
         else
         {
             super.takeDamage(damage);
+            this.hp.decrease(damage);
+            if (this.durability <= 0)
+                this.hp.destroy();
         }
         this.updateShield();
     }
