@@ -7,6 +7,8 @@ export default class extends OrbitObject
         super(scene, x, y, mass, texture, frame);
         // TODO: realistic durability
         this.durability = 999999999999999999999999;
+        this.scale = 1;
+        this.setScale(this.scale);
         this.type = "Planet";
 
         this.shielders = [];

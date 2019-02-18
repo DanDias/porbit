@@ -8,7 +8,7 @@ export default class extends Phaser.Physics.Arcade.Sprite
         scene.add.existing(this);
         scene.physics.add.existing(this);
         this.body.mass = mass;
-        this.body.radius = this.width*0.5;
+        this.setScale(1);
 
         this.durability = 1;
         this.type = "OrbitObject";

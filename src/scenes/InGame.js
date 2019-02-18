@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import Planet from '../spaceobjects/Planet'
 import EnemyRocket from '../spaceobjects/EnemyRocket'
+import EnemyUFO from '../spaceobjects/EnemyUFO'
 
 import Asteroid from '../spaceobjects/Asteroid'
 import MineralType from '../components/MineralType'
@@ -11,8 +12,6 @@ export default class extends Phaser.Scene
     {
         super({ key: 'InGame', active: true});
         this.spaceObjects = [];
-        this.pointMass = 1;
-        this.pointScale = 0.25;
         this.planet;
         this.planetMass = 597200; 
 
@@ -54,9 +53,8 @@ export default class extends Phaser.Scene
 
     preload ()
     {
-        this.load.spritesheet('Collector', 'assets/point.png', { frameWidth: 29, frameHeight: 29 });
-        this.load.spritesheet('Shielder-full', 'assets/shielder-full.png', { frameWidth: 29, frameHeight: 14 });
-        this.load.spritesheet('Shielder-empty', 'assets/shielder-empty.png', { frameWidth: 29, frameHeight: 14 });
+        this.load.spritesheet('Collector', 'assets/collector.png', { frameWidth: 200, frameHeight: 200 });
+        this.load.spritesheet('Shielder', 'assets/shielder.png', { frameWidth: 200, frameHeight: 200 });
         this.load.spritesheet('WeaponPlatform', 'assets/point.png', { frameWidth: 29, frameHeight: 29 });
         this.load.spritesheet('Interceptor', 'assets/point.png', { frameWidth: 29, frameHeight: 29 });
         this.load.spritesheet('asteroid', 'assets/point.png', { frameWidth: 29, frameHeight: 29 });
@@ -94,8 +92,8 @@ export default class extends Phaser.Scene
         this.anims.create(animConfig);
 
         this.flickEstimate = this.physics.add.sprite(0,0,'');
-        this.flickEstimate.body.mass = this.pointMass;
-        this.flickEstimate.body.radius = 32*this.pointScale;
+        this.flickEstimate.body.mass = 1;
+        this.flickEstimate.body.radius = 32;
         this.flickEstimate.body.enable = false;
         this.flickEstimate.visible = false;
 
@@ -115,11 +113,9 @@ export default class extends Phaser.Scene
             if (this.spawnMode == 'enemies')
             {
                 // Spawn Rocket
-                var enemy = new EnemyRocket(this,downPoint.x,downPoint.y,this.pointMass,'rocket');
+                var enemy = new EnemyRocket(this,downPoint.x,downPoint.y,'rocket');
                 this.physics.accelerateToObject(enemy, this.planet, 5);
                 enemy.rotation = Phaser.Math.Angle.BetweenPoints(enemy,this.planet)+Math.PI/2;
-                enemy.setScale(this.pointScale);
-                enemy.body.mass = this.pointMass;
                 enemy.onDestroyed(this.destroyObject);
                 this.spaceObjects.push(enemy);
             }
@@ -139,15 +135,14 @@ export default class extends Phaser.Scene
         this.input.on('pointerup', function (pointer) {
             if (!this.spawning || this.spawnMode == 'enemies') {return;}
             this.graphics.clear();
-            var texture = this.spawnMode.name == 'Shielder' ? 'Shielder-full' : this.spawnMode.name; 
+            var texture = this.spawnMode.name; 
             
             var downPoint = this.cameras.main.getWorldPoint(pointer.downX,pointer.downY);
             var upPoint = this.cameras.main.getWorldPoint(pointer.upX,pointer.upY)
 
-            var point = new this.spawnMode.class(this,downPoint.x,downPoint.y,this.pointMass,texture);
+            var point = new this.spawnMode.class(this,downPoint.x,downPoint.y,texture);
             if (this.spawnMode.name != "Shielder")
             {
-                point.setScale(this.pointScale);
                 if (this.spawnMode.name == "Collector")
                 {
                     point.collectCallback = (obj) => { 
@@ -240,8 +235,7 @@ export default class extends Phaser.Scene
             this, 
             spawnPoint.x, 
             spawnPoint.y, 
-            MineralType[mineralKeys[Phaser.Math.RND.between(0,mineralKeys.length-1)]], 
-            1, 
+            MineralType[mineralKeys[Phaser.Math.RND.between(0,mineralKeys.length-1)]],
             'asteroid'
         );
         asteroid.body.setVelocity(velocity.x,velocity.y);
@@ -277,7 +271,6 @@ export default class extends Phaser.Scene
             this, 
             spawnPoint.x, 
             spawnPoint.y,
-            1,
             'rocket'
         );
         rocket.rotation = Phaser.Math.Angle.BetweenPoints(rocket,this.planet)+Math.PI/2;
@@ -552,7 +545,7 @@ export default class extends Phaser.Scene
     {
         // TODO: Object pooling... and a better way to get to add. Is there internal pooling?
         var boom = this.add.sprite(x, y, 'boom', 23);
-        boom.setScale(this.pointScale);
+        boom.setScale(0.25);
 
         boom.anims.play('explode');
         boom.on('animationcomplete', (v) => {

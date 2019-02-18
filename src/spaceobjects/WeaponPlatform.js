@@ -4,9 +4,11 @@ import Gun from '../components/Gun'
 
 export default class extends Ship
 {
-    constructor(scene, x, y, mass, texture, frame)
+    constructor(scene, x, y, texture, frame)
     {
         super(scene, x, y, mass, texture, frame);
+        this.scale = 0.25;
+        this.setScale(this.scale);
         this.setTint(0xAA0000);
         this.type = "WeaponPlatform";
         this.detectionRadius = 200;

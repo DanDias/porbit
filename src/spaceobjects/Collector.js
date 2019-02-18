@@ -3,10 +3,11 @@ import Ship from './Ship'
 
 export default class extends Ship
 {
-    constructor(scene, x, y, mass, texture, frame, collectCallback)
+    constructor(scene, x, y, texture, frame, collectCallback)
     {
-        super(scene, x, y, mass, texture, frame);
-        this.setTint(0xFF8C00);
+        super(scene, x, y, 1, texture, frame);
+        this.scale = 0.15;
+        this.setScale(this.scale);
         this.type = "Collector";
         this.caught = [];
 

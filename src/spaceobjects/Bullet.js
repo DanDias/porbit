@@ -7,10 +7,11 @@ export default class extends Phaser.GameObjects.Sprite
         super(scene,x,y,texture,frame);
         scene.add.existing(this);
         scene.physics.add.existing(this);
-        this.setScale(0.1);
+        this.scale = 0.1;
+        this.setScale(this.scale);
         this.type = "Bullet";
         this.life = 5000;
-        this.body.mass = 1;
+        this.body.mass = 0.25;
         this.body.radius = 1;
         // TODO: There's got to be an object override collide...
         scene.physics.world.bodies.entries.forEach((v) => {

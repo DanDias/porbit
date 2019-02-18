@@ -2,9 +2,11 @@ import OrbitObject from './OrbitObject'
 
 export default class extends OrbitObject
 {
-    constructor(scene, x, y, type, mass, texture, frame)
+    constructor(scene, x, y, type, texture, frame)
     {
-        super(scene, x, y, mass, texture, frame);
+        super(scene, x, y, 0.75, texture, frame);
+        this.scale = 0.25;
+        this.setScale(this.scale);
         this.mineralType = type;
         this.type = "Asteroid";
         this.setTint(type.color);

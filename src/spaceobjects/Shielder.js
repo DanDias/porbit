@@ -3,10 +3,11 @@ import Ship from './Ship'
 
 export default class extends Ship
 {
-    constructor(scene, x, y, mass, texture, frame)
+    constructor(scene, x, y, texture, frame)
     {
-        super(scene, x, y, mass, texture, frame);
-        this.setTint(0x0000AA);
+        super(scene, x, y, 1, texture, frame);
+        this.scale = 0.15;
+        this.setScale(this.scale);
         this.type = "Shielder";
         this.empty = false;
         this.rechargeTimer = 0;
@@ -21,7 +22,7 @@ export default class extends Ship
             blendMode: 'SCREEN'
         });
 
-        this.emitter.startFollow(this,0,0,true);
+        this.emitter.startFollow(this,-5,5,true);
     }
 
     setTarget(target)
@@ -54,7 +55,7 @@ export default class extends Ship
                 this.emitter.start();
             }
         }
-        this.rotation = Phaser.Math.Angle.BetweenPoints(this,this.target)+3*Math.PI/2;
+        this.rotation = Phaser.Math.Angle.BetweenPoints(this,this.target)+4*Math.PI;
     }
 
     takeDamage(damage)
