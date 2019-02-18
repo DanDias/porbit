@@ -51,11 +51,21 @@ export default class extends Ship
                 this.empty = false;
                 this.rechargeTimer = 0;
                 this.durability = 1;
-                this.target.updateShield(true);
-                this.emitter.start();
+                if (this.target.active)
+                {
+                    this.target.updateShield(true);
+                    this.emitter.start();
+                }
             }
         }
-        this.rotation = Phaser.Math.Angle.BetweenPoints(this,this.target)+4*Math.PI;
+        if (!this.target.active)
+        {
+            this.emitter.stop();
+        }
+        else
+        {
+            this.rotation = Phaser.Math.Angle.BetweenPoints(this,this.target)+4*Math.PI;
+        }
     }
 
     takeDamage(damage)

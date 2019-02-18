@@ -30,7 +30,7 @@ export default class extends OrbitObject
     updateShield()
     {
         var availableShields = this.shielders.filter(val => !val.empty );
-        if (availableShields.length == 0 && this.shields.on)
+        if ((availableShields.length == 0 && this.shields.on) || !this.active)
         {
             this.shields.killAll();
             this.shields.stop();
@@ -64,7 +64,10 @@ export default class extends OrbitObject
             super.takeDamage(damage);
             this.hp.decrease(damage);
             if (this.durability <= 0)
+            {
                 this.hp.destroy();
+                this.updateShield();
+            }
         }
         this.updateShield();
     }

@@ -21,6 +21,7 @@ export default class extends Phaser.Scene
     update(delta,time)
     {
         this.moneyText.text = "Money: "+this.gameScene.money;
+        this.fps.update(delta,time);
     }
 
     showError(text,pos)

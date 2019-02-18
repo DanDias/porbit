@@ -61,7 +61,8 @@ export class FPSCounter
         scene.add.existing(this.fpsLowText);
 
         this.fpsActiveText.low = 999;
-        this.fpsActiveText.high = 0;    
+        this.fpsActiveText.high = 0;
+        this.game = scene.game;
     }
 
     update(delta,time)

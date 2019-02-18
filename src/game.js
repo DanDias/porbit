@@ -3,7 +3,6 @@ import Phaser from 'phaser'
 import InGameUI from './scenes/InGameUI';
 import InGame from './scenes/InGame';
 
-import { FloatingText } from './components/ui'
 import Spawner from './components/Spawner';
 
 var config = {

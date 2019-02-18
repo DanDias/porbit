@@ -1,5 +1,6 @@
 var path = require('path')
 var webpack = require('webpack')
+var BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 var HtmlWebpackPlugin = require('html-webpack-plugin')
 var BrowserSyncPlugin = require('browser-sync-webpack-plugin')
 
@@ -11,25 +12,18 @@ var definePlugin = new webpack.DefinePlugin({
 })
 
 module.exports = {
-  entry: {
-    app: ['./src/game.js', './server.js'],
-    vendor: ['phaser']
-  },
+  entry: './src/game.js',
   devtool: 'source-map',
   output: {
-    pathinfo: true,
-    path: path.resolve(__dirname, 'dist'),
-    publicPath: './dist/',
-    filename: 'bundle.js'
+    filename: 'bundle.js',
+    path: path.resolve(__dirname, 'dist')
   },
   watch: true,
   optimization: {
     splitChunks: {
-        chunks: 'all',
         cacheGroups: {
-            default: false,
-            vendors: false,
-            vendor: {
+            node_vendor: {
+                test: /[\\/]node_modules[\\/]/,
                 name: 'vendor',
                 chunks: 'all'
             }
@@ -38,10 +32,13 @@ module.exports = {
   },
   plugins: [
     definePlugin,
+    new BundleAnalyzerPlugin({
+      analyzerMode: 'static'
+    }),
     new HtmlWebpackPlugin({
       filename: '../index.html',
       template: './src/index.html',
-      chunks: ['vendor', 'app'],
+      chunks: ['vendor','main'],
       chunksSortMode: 'manual',
       minify: {
         removeAttributeQuotes: false,
@@ -63,20 +60,13 @@ module.exports = {
       }
     })
   ],
-  module: {
-    rules: [
-      /*{ test: /\.js$/, use: ['babel-loader'], include: path.join(__dirname, 'src') },*/
-      /*{ test: /phaser-split\.js$/, use: ['expose-loader?Phaser'] }*/
-    ]
-  },
-  node: {
-    fs: 'empty',
-    net: 'empty',
-    tls: 'empty'
-  },
   resolve: {
     alias: {
       'phaser': phaser
-    }
+    },
+    modules: [
+      path.resolve('./'),
+      path.resolve('./node_modules')
+    ]
   }
 }
