@@ -30,14 +30,19 @@ export default class extends Phaser.Scene
         this.add.existing(error);
     }
 
-    setGameOver()
+    setGameOver(won)
     {
         this.gameOver = true;
         this.spawnButtons.forEach((b) => {
             b.active = false;
         });
-        this.gameOverText = new Phaser.GameObjects.Text(this, this.game.config.width/2-35, this.game.config.height/2, "Game over, man.", { fill: '#F00', fontWeight: 'bold' });
+        this.gameOverText = new Phaser.GameObjects.Text(this, this.game.config.width/2-35, this.game.config.height/2, won ? "You destroyed all the enemies!" : "Game over, man. Game over.", { fill: '#F00', fontWeight: 'bold' });
         this.add.existing(this.gameOverText);
+        this.gameOverButton = new UIButton(this, this.game.config.width/2-80, this.game.config.height/2-25, 160, 50, "Restart", { fill: '#000'});
+        var self = this;
+        this.gameOverButton.on("pointerdown", function(pointer) {
+            window.location = window.location;
+        });
     }
 
     create()
@@ -59,21 +64,22 @@ export default class extends Phaser.Scene
         });
 
         var xLoc = 75;
+        var self = this;
         Object.keys(this.spawner).forEach(function(key) {
             var item = this.spawner[key];
             var btn = new UIButton(this, xLoc, config.height-40, 150, 50, key+"\n$"+item.cost, { fill: '#000' });
-            var me = this;
             btn.on("pointerdown", function(pointer) {
-                me.spawnButtons.forEach((b) => {
+                if (self.gameOver) { return; }
+                self.spawnButtons.forEach((b) => {
                     b.setSelected(false);
                 });
                 pointer.event.cancelBubble = true;
-                me.gameScene.spawnMode = item;
+                self.gameScene.spawnMode = item;
                 this.setSelected(true);
             });
-            if (this.gameScene.spawnMode === null)
+            if (self.gameScene.spawnMode === null)
             {
-                this.gameScene.spawnMode = item;
+                self.gameScene.spawnMode = item;
                 btn.setSelected(true);
             }
             xLoc += 150

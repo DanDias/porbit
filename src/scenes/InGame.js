@@ -22,13 +22,14 @@ export default class extends Phaser.Scene
         this.simulationSteps = 100;
         this.graphics;
 
+        this.totalEnemies = 30;
+
         this.cost = true;
 
         this.spawning = false;
 
         this.money = 0;
         this.timer = 0;
-        this.gameOver = false;
 
         this.referenceWidth = 1024;
         this.referenceHeight = 768;
@@ -44,7 +45,7 @@ export default class extends Phaser.Scene
             }
         },this);
 
-        if (!this.gameOver)
+        if (!this.uiScene.gameOver)
         {
             this.timer += delta;
             if (this.timer > 500)
@@ -106,7 +107,7 @@ export default class extends Phaser.Scene
         //  Events
 
         this.input.on('pointerdown', function (pointer) {
-            if (pointer.event.cancelBubble == true) {return;}
+            if (pointer.event.cancelBubble == true || this.uiScene.gameOver) {return;}
 
             var downPoint = this.cameras.main.getWorldPoint(pointer.x,pointer.y);
             if (this.money < this.spawnMode.cost && this.cost) 
@@ -139,7 +140,7 @@ export default class extends Phaser.Scene
         }, this);
 
         this.input.on('pointerup', function (pointer) {
-            if (!this.spawning || this.spawnMode == 'enemies') {return;}
+            if (!this.spawning || this.spawnMode == 'enemies' || this.uiScene.gameOver) {return;}
             this.graphics.clear();
             var texture = this.spawnMode.name; 
             
@@ -177,7 +178,7 @@ export default class extends Phaser.Scene
         },this);
 
         this.input.on('pointermove', function (pointer) {
-            if(!pointer.isDown || !this.spawning || this.spawnMode == 'enemies') { return; }
+            if(!pointer.isDown || !this.spawning || this.spawnMode == 'enemies' || this.uiScene.gameOver) { return; }
             // Only do stuff if the pointer is down
             this.graphics.clear();
 
@@ -285,8 +286,12 @@ export default class extends Phaser.Scene
         rocket.setScale(0.5);
         rocket.onDestroyed(this.destroyObject);
         this.spaceObjects.push(rocket);
-        // Schedule another
-        this.time.delayedCall(Phaser.Math.RND.integerInRange(3,8)*1000, this.spawnEnemy,[],this);
+        this.totalEnemies -= 1;
+        if (this.totalEnemies > 0)
+        {
+            // Schedule another
+            this.time.delayedCall(Phaser.Math.RND.integerInRange(3,8)*1000, this.spawnEnemy,[],this);
+        }
     }
 
     destroyObject(obj, explode) 
@@ -302,13 +307,16 @@ export default class extends Phaser.Scene
             return obj != val;
         });
         if (obj.type == "Planet")
-            this.scene.setGameOver();
+            scene.setGameOver(false);
+        else if (obj.type == "EnemyRocket" && scene.totalEnemies == 0)
+            scene.setGameOver(true);
         obj.destroy();
     }
 
-    setGameOver()
+    setGameOver(won)
     {
-        this.uiScene.setGameOver();
+        if (!this.uiScene.gameOver)
+            this.uiScene.setGameOver(won);
     }
 
     simulateFrom(obj,x,y,steps)
