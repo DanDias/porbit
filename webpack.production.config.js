@@ -20,7 +20,6 @@ module.exports = {
     publicPath: './dist/',
     filename: 'bundle.js'
   },
-  watch: true,
   optimization: {
     splitChunks: {
         chunks: 'all',
